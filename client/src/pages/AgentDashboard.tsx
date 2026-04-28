@@ -519,7 +519,7 @@ export default function AgentDashboard() {
                       </div>
                     );
                   })}
-                  {typingIndicators[selectedTicketId]?.user && selectedTicket.status === 'active' && (
+                  {selectedTicketId && typingIndicators[selectedTicketId]?.user && selectedTicket.status === 'active' && (
                     <div className="flex justify-start">
                       <div className="bg-white border border-zinc-200 p-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
                         <div className="flex gap-1">
