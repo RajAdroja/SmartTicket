@@ -23,6 +23,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(() => localStorage.getItem('smartTicket_ticketId'));
+  const [customerCompany, setCustomerCompany] = useState('global');
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
   const [attachment, setAttachment] = useState<string | null>(null);
@@ -163,7 +164,7 @@ export default function ChatWidget() {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newHistory })
+        body: JSON.stringify({ messages: newHistory, company: customerCompany })
       });
       const data = await response.json();
       
@@ -185,7 +186,7 @@ export default function ChatWidget() {
         setMessages(finalHistory);
         
         joinTicketRoom(newId);
-        escalateTicket(newId, 'Customer', finalHistory, { name: 'Customer', email: '', company: '' });
+        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: customerCompany });
       } else if (data.suggestResolution) {
         markAiResolved();
         localStorage.removeItem('smartTicket_messages');
@@ -297,11 +298,25 @@ export default function ChatWidget() {
         <Card className="w-[380px] h-[600px] max-h-[80vh] flex flex-col shadow-2xl border-zinc-200/60 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200">
           <CardHeader className="bg-indigo-600 text-white p-4 flex flex-row items-center justify-between shrink-0 rounded-t-xl">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
                 <Bot size={20} />
               </div>
-              <div>
-                <CardTitle className="text-base font-semibold">SmartTicket Support</CardTitle>
+              <div className="flex flex-col">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  SmartTicket
+                  {!ticketId && (
+                    <select
+                      value={customerCompany}
+                      onChange={e => setCustomerCompany(e.target.value)}
+                      className="text-[10px] bg-white/20 text-white border-none rounded outline-none py-0.5 px-1 font-normal cursor-pointer"
+                    >
+                      <option className="text-black" value="global">Global User</option>
+                      <option className="text-black" value="Acme Corp">Acme Corp</option>
+                      <option className="text-black" value="Globex">Globex</option>
+                      <option className="text-black" value="Initech">Initech</option>
+                    </select>
+                  )}
+                </CardTitle>
                 <p className="text-xs text-indigo-200 flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${agentOnlineCount > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
                   {ticketId ? 'Connected to Agent' : agentOnlineCount > 0 ? 'Agents Online' : 'No Agents Online'}

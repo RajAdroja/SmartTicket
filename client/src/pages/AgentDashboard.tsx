@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTickets, Ticket } from '../context/TicketContext';
-import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
+import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save, Volume2, VolumeX, FileText, UploadCloud, Trash2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -19,17 +19,16 @@ export default function AgentDashboard() {
   const [isInternal, setIsInternal] = useState(false);
   const [kbText, setKbText] = useState('');
   const [isSavingKb, setIsSavingKb] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('agent_dark_mode') === 'true');
+  const [isPdfUploading, setIsPdfUploading] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [isDraggingPdf, setIsDraggingPdf] = useState(false);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
+  const [selectedKbCompany, setSelectedKbCompany] = useState('global');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
   const prevTicketCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Persist dark mode preference
-  useEffect(() => {
-    localStorage.setItem('agent_dark_mode', String(isDarkMode));
-  }, [isDarkMode]);
 
   // Persist sound preference
   useEffect(() => {
@@ -98,23 +97,49 @@ export default function AgentDashboard() {
 
   useEffect(() => {
     if (activeTab === 'knowledge') {
-      fetch(`${API_URL}/api/kb`)
+      fetch(`${API_URL}/api/kb?company=${encodeURIComponent(selectedKbCompany)}`)
         .then(res => res.json())
         .then(data => setKbText(data.kb || ''))
         .catch(console.error);
     }
-  }, [activeTab]);
+  }, [activeTab, selectedKbCompany]);
 
   const handleSaveKb = () => {
     setIsSavingKb(true);
     fetch(`${API_URL}/api/kb`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kb: kbText })
+      body: JSON.stringify({ kb: kbText, company: selectedKbCompany })
     })
       .then(res => res.json())
       .finally(() => setIsSavingKb(false));
   };
+
+  const handlePdfUpload = async (file: File) => {
+    setIsPdfUploading(true);
+    setPdfStatus(null);
+    try {
+      const formData = new FormData();
+      formData.append('pdf', file);
+      formData.append('company', selectedKbCompany);
+      const res = await fetch(`${API_URL}/api/kb/upload`, { method: 'POST', body: formData });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh the KB text area with the latest content from server
+        const kbRes = await fetch(`${API_URL}/api/kb?company=${encodeURIComponent(selectedKbCompany)}`);
+        const kbData = await kbRes.json();
+        setKbText(kbData.kb);
+        setPdfStatus({ type: 'success', message: `✓ "${file.name}" processed — ${data.pages} page(s), ${data.characters.toLocaleString()} characters extracted` });
+      } else {
+        setPdfStatus({ type: 'error', message: data.error || 'Upload failed' });
+      }
+    } catch {
+      setPdfStatus({ type: 'error', message: 'Network error — could not reach server' });
+    } finally {
+      setIsPdfUploading(false);
+    }
+  };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setReply(e.target.value);
@@ -180,8 +205,8 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      <div className={`h-screen flex flex-col font-sans transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-800'}`}>
-      <header className={`h-14 flex items-center px-6 justify-between shrink-0 shadow-md z-10 ${isDarkMode ? 'bg-zinc-900 text-white' : 'bg-zinc-900 text-white'}`}>
+      <div className="h-screen bg-zinc-100 flex flex-col font-sans text-zinc-800">
+      <header className="h-14 bg-zinc-900 text-white flex items-center px-6 justify-between shrink-0 shadow-md z-10">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold">
             T
@@ -216,13 +241,6 @@ export default function AgentDashboard() {
               title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
             >
               {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
-            </button>
-            <button
-              onClick={() => setIsDarkMode(p => !p)}
-              className="text-zinc-400 hover:text-white transition-colors p-1"
-              title="Toggle dark mode"
-            >
-              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
             </button>
             <span className="flex items-center gap-2 border-l border-zinc-700 pl-3">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -336,25 +354,100 @@ export default function AgentDashboard() {
               </div>
             </div>
           ) : activeTab === 'knowledge' ? (
-            <div className="p-8 max-w-4xl mx-auto w-full animate-in fade-in flex flex-col h-full">
-              <div className="mb-6 flex items-center justify-between">
+            <div className="p-8 max-w-4xl mx-auto w-full animate-in fade-in flex flex-col h-full gap-5">
+              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
                     <Database className="text-indigo-600" /> AI Knowledge Base
                   </h1>
-                  <p className="text-zinc-500 mt-1">Paste your company FAQs, policies, and pricing here. The AI Assistant will use this context to answer customer questions.</p>
+                  <p className="text-zinc-500 mt-1">Manage standard and company-specific knowledge to ground the AI.</p>
                 </div>
-                <Button onClick={handleSaveKb} disabled={isSavingKb} className="bg-indigo-600 hover:bg-indigo-700 gap-2">
-                  {isSavingKb ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                  Save Changes
-                </Button>
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Target Company</label>
+                    <select
+                      value={selectedKbCompany}
+                      onChange={(e) => setSelectedKbCompany(e.target.value)}
+                      className="text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="global">Global (All Users)</option>
+                      <option value="Acme Corp">Acme Corp</option>
+                      <option value="Globex">Globex</option>
+                      <option value="Initech">Initech</option>
+                    </select>
+                  </div>
+                  <Button onClick={handleSaveKb} disabled={isSavingKb} className="bg-indigo-600 hover:bg-indigo-700 gap-2 mt-4">
+                    {isSavingKb ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                    Save Changes
+                  </Button>
+                </div>
               </div>
-              <textarea
-                value={kbText}
-                onChange={e => setKbText(e.target.value)}
-                placeholder="Type or paste knowledge base content here..."
-                className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm"
-              />
+
+              {/* PDF Upload Zone */}
+              <div
+                onDragOver={e => { e.preventDefault(); setIsDraggingPdf(true); }}
+                onDragLeave={() => setIsDraggingPdf(false)}
+                onDrop={async e => {
+                  e.preventDefault();
+                  setIsDraggingPdf(false);
+                  const file = e.dataTransfer.files[0];
+                  if (file) await handlePdfUpload(file);
+                }}
+                onClick={() => pdfInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-3 cursor-pointer transition-all ${
+                  isDraggingPdf
+                    ? 'border-indigo-500 bg-indigo-50 scale-[1.01]'
+                    : 'border-zinc-200 hover:border-indigo-400 hover:bg-zinc-50'
+                }`}
+              >
+                <input
+                  ref={pdfInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) handlePdfUpload(f); e.target.value = ''; }}
+                />
+                {isPdfUploading ? (
+                  <><Loader2 size={28} className="text-indigo-500 animate-spin" /><p className="text-sm font-medium text-indigo-600">Extracting text from PDF...</p></>
+                ) : (
+                  <>
+                    <UploadCloud size={28} className={isDraggingPdf ? 'text-indigo-500' : 'text-zinc-400'} />
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-zinc-700">Drop a PDF here or <span className="text-indigo-600">click to browse</span></p>
+                      <p className="text-xs text-zinc-400 mt-1">Max 10MB · Text will be appended to the knowledge base below</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Status message */}
+              {pdfStatus && (
+                <div className={`text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium ${
+                  pdfStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                }`}>
+                  <FileText size={14} />
+                  {pdfStatus.message}
+                  <button onClick={() => setPdfStatus(null)} className="ml-auto"><X size={14} /></button>
+                </div>
+              )}
+
+              {/* Manual text area */}
+              <div className="flex flex-col flex-1 min-h-0">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Knowledge Base Content</p>
+                  {kbText && (
+                    <button onClick={() => setKbText('')} className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700">
+                      <Trash2 size={12} /> Clear all
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={kbText}
+                  onChange={e => setKbText(e.target.value)}
+                  placeholder="Type or paste knowledge base content here, or upload a PDF above..."
+                  className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-sm min-h-[200px]"
+                />
+              </div>
             </div>
           ) : !selectedTicket ? (
             <div className="flex-1 flex items-center justify-center text-zinc-400 flex-col gap-3">

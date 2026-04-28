@@ -3,6 +3,8 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import multer from 'multer';
+import pdfParse from 'pdf-parse';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
@@ -11,6 +13,8 @@ import {
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 
 dotenv.config();
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
 
 const app = express();
 app.use(cors());
@@ -25,11 +29,11 @@ const io = new Server(server, {
 
 // 1. Chat endpoint for AI
 app.post('/api/chat', async (req, res) => {
-  const { messages } = req.body;
+  const { messages, company } = req.body;
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Invalid messages format' });
   }
-  const { reply, suggestEscalation, suggestResolution } = await generateChatResponse(messages);
+  const { reply, suggestEscalation, suggestResolution } = await generateChatResponse(messages, company);
   res.json({ reply, suggestEscalation, suggestResolution });
 });
 
@@ -61,16 +65,44 @@ app.post('/api/suggest-replies', async (req, res) => {
 
 // 6. Knowledge Base endpoints
 app.get('/api/kb', async (req, res) => {
-  res.json({ kb: await getKnowledgeBase() });
+  const company = req.query.company as string || 'global';
+  res.json({ kb: await getKnowledgeBase(company) });
 });
 
 app.post('/api/kb', async (req, res) => {
-  const { kb } = req.body;
+  const { kb, company } = req.body;
+  const targetCompany = company || 'global';
   if (typeof kb === 'string') {
-    await setKnowledgeBase(kb);
+    await setKnowledgeBase(kb, targetCompany);
     res.json({ success: true });
   } else {
     res.status(400).json({ error: 'Invalid format' });
+  }
+});
+
+// 7. PDF upload → extract text → append to Knowledge Base
+app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (req.file.mimetype !== 'application/pdf') return res.status(400).json({ error: 'Only PDF files are supported' });
+
+    const data = await pdfParse(req.file.buffer);
+    const extractedText = data.text.trim();
+
+    if (!extractedText) return res.status(422).json({ error: 'Could not extract text from this PDF' });
+
+    const targetCompany = req.body.company || 'global';
+    
+    // Append to existing KB (or replace — your choice; here we append with a separator)
+    const existing = await getKnowledgeBase(targetCompany);
+    const separator = existing ? '\n\n---\n\n' : '';
+    const updated = `${existing}${separator}${extractedText}`;
+    await setKnowledgeBase(updated, targetCompany);
+
+    res.json({ success: true, pages: data.numpages, characters: extractedText.length, preview: extractedText.slice(0, 300) });
+  } catch (err: any) {
+    console.error('PDF parse error:', err);
+    res.status(500).json({ error: 'Failed to parse PDF', detail: err.message });
   }
 });
 

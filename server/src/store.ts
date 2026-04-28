@@ -149,11 +149,11 @@ export const submitCsat = async (rating: number) => {
 
 // ── Knowledge Base Helpers ──────────────────────────────────────────────────
 
-export const getKnowledgeBase = async (): Promise<string> => {
-  const kb = await KbModel.findById('global').lean() as any;
+export const getKnowledgeBase = async (company: string = 'global'): Promise<string> => {
+  const kb = await KbModel.findById(company).lean() as any;
   return kb?.content || '';
 };
 
-export const setKnowledgeBase = async (content: string) => {
-  await KbModel.updateOne({ _id: 'global' }, { content }, { upsert: true });
+export const setKnowledgeBase = async (content: string, company: string = 'global') => {
+  await KbModel.updateOne({ _id: company }, { content }, { upsert: true });
 };

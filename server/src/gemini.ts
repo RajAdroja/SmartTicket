@@ -6,15 +6,18 @@ dotenv.config();
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const getSystemPrompt = async () => {
-  const kb = await getKnowledgeBase();
+const getSystemPrompt = async (company?: string) => {
+  const globalKb = await getKnowledgeBase('global');
+  const companyKb = company && company !== 'global' ? await getKnowledgeBase(company) : '';
+  
+  const combinedKb = companyKb 
+    ? `GLOBAL KNOWLEDGE:\n${globalKb}\n\nCOMPANY-SPECIFIC KNOWLEDGE (${company}):\n${companyKb}`
+    : `KNOWLEDGE BASE:\n${globalKb}`;
+
   return `
 You are the SmartTicket AI Assistant, providing Tier-1 support.
 Your goal is to answer generic user queries clearly and professionally using the provided knowledge base.
-KNOWLEDGE BASE:
-"""
-${kb}
-"""
+${combinedKb}
 
 If the user asks a question not covered by the knowledge base, do your best to answer, or suggest speaking to a human.
 If the user mentions "human", "agent", "escalate", or seems frustrated, you MUST suggest they escalate the ticket by saying something like: "It looks like you'd like to speak with a human agent. I am escalating this ticket for you."
@@ -23,7 +26,7 @@ Keep your responses short (1-3 sentences) and conversational.
 `;
 };
 
-export async function generateChatResponse(history: Message[]): Promise<{ reply: string, suggestEscalation: boolean, suggestResolution: boolean }> {
+export async function generateChatResponse(history: Message[], company?: string): Promise<{ reply: string, suggestEscalation: boolean, suggestResolution: boolean }> {
   try {
     // Format history for Gemini
     // @google/genai expects contents as { role: 'user' | 'model', parts: [{ text: '' }] }
@@ -35,7 +38,7 @@ export async function generateChatResponse(history: Message[]): Promise<{ reply:
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
-        { role: 'user', parts: [{ text: await getSystemPrompt() }] },
+        { role: 'user', parts: [{ text: await getSystemPrompt(company) }] },
         { role: 'model', parts: [{ text: 'Understood. I will act as the SmartTicket AI Assistant.' }] },
         ...contents
       ]
