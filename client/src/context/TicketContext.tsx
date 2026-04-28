@@ -45,6 +45,7 @@ interface TicketContextType {
   typingIndicators: Record<string, { user: boolean; agent: boolean }>;
   sendTypingStatus: (ticketId: string, isTyping: boolean, sender: 'user' | 'agent') => void;
   submitCsat: (rating: number, ticketId?: string) => void;
+  agentOnlineCount: number;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -56,6 +57,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [metrics, setMetrics] = useState<Metrics>({ aiResolved: 0, escalated: 0, humanResolved: 0, totalCsatScore: 0, csatCount: 0 });
   const [typingIndicators, setTypingIndicators] = useState<Record<string, { user: boolean; agent: boolean }>>({});
+  const [agentOnlineCount, setAgentOnlineCount] = useState(0);
 
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
@@ -104,6 +106,10 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
           [data.sender]: data.isTyping
         }
       }));
+    });
+
+    newSocket.on('agent_online_count', (count: number) => {
+      setAgentOnlineCount(count);
     });
 
     return () => {
@@ -173,7 +179,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   return (
     <TicketContext.Provider value={{ 
       tickets, socket, escalateTicket, sendAgentReply, resolveTicket, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
-      typingIndicators, sendTypingStatus, submitCsat
+      typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount
     }}>
       {children}
     </TicketContext.Provider>
