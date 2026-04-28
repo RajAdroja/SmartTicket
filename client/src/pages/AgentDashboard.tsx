@@ -246,38 +246,55 @@ export default function AgentDashboard() {
         {}
         <div className="w-80 bg-white border-r border-zinc-200 flex flex-col">
           <div className="p-4 border-b border-zinc-200 bg-zinc-50 flex justify-between items-center">
-            <h2 className="font-semibold text-zinc-700 text-sm uppercase tracking-wider">Live Queue</h2>
-            <Badge variant="secondary">{activeTickets.length}</Badge>
+            <h2 className="font-semibold text-zinc-700 text-sm uppercase tracking-wider">Queue</h2>
+            <div className="flex gap-2">
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{activeTickets.length} Active</Badge>
+              <Badge variant="outline" className="text-zinc-500">{tickets.length} Total</Badge>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {activeTickets.length === 0 ? (
+          <div className="flex-1 overflow-y-auto bg-zinc-50/50">
+            {tickets.length === 0 ? (
               <div className="p-8 text-center text-zinc-400 text-sm">
-                No active escalations.
+                No escalations yet.
               </div>
             ) : (
               <div className="flex flex-col">
-                {activeTickets.map(ticket => (
+                {[...tickets].reverse().map(ticket => {
+                  const isResolved = ticket.status === 'resolved';
+                  return (
                   <button
                     key={ticket.id}
                     onClick={() => setSelectedTicketId(ticket.id)}
-                    className={`p-4 border-b border-zinc-100 text-left transition-colors flex flex-col gap-2 ${
-                      selectedTicketId === ticket.id ? 'bg-indigo-50 border-l-4 border-l-indigo-600' : 'hover:bg-zinc-50 border-l-4 border-l-transparent'
+                    className={`p-4 border-b text-left transition-all flex flex-col gap-2 ${
+                      selectedTicketId === ticket.id 
+                        ? 'bg-indigo-50 border-l-4 border-l-indigo-600 border-b-zinc-200' 
+                        : isResolved 
+                          ? 'bg-zinc-50/50 opacity-75 hover:opacity-100 border-l-4 border-l-transparent border-b-zinc-200 grayscale-[0.5]' 
+                          : 'bg-white hover:bg-zinc-50 border-l-4 border-l-transparent border-b-zinc-100'
                     }`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold text-zinc-900">{ticket.customerName}</span>
-                        {ticket.tag && <Badge variant="outline" className="text-[10px] py-0">{ticket.tag}</Badge>}
+                    <div className="flex justify-between items-start w-full">
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <span className={`font-semibold ${isResolved ? 'text-zinc-500' : 'text-zinc-900'}`}>{ticket.customerName}</span>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {isResolved ? (
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-200 text-zinc-600 hover:bg-zinc-200">Closed</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Open</Badge>
+                          )}
+                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-zinc-500">{ticket.tag}</Badge>}
+                        </div>
                       </div>
-                      <span className="text-xs text-zinc-400">
+                      <span className="text-xs text-zinc-400 shrink-0">
                         {new Date(ticket.escalatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <span className="text-xs text-zinc-500 truncate w-full">
+                    <span className={`text-xs truncate w-full ${isResolved ? 'text-zinc-400' : 'text-zinc-500'}`}>
                       {ticket.messages[ticket.messages.length - 1]?.text}
                     </span>
                   </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

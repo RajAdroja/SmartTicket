@@ -63,7 +63,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
-    fetch(`${SOCKET_URL}/api/tickets`)
+    fetch(`${SOCKET_URL}/api/tickets/all`)
       .then(res => res.json())
       .then(data => setTickets(data))
 
