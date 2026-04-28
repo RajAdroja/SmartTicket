@@ -75,12 +75,16 @@ app.post('/api/kb', async (req, res) => {
 });
 
 // WEBSOCKET EVENTS
+let agentCount = 0;
+
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.on('agent_join', () => {
     socket.join('agents_room');
-    console.log(`Agent joined: ${socket.id}`);
+    agentCount++;
+    io.emit('agent_online_count', agentCount); // broadcast to everyone (including customers)
+    console.log(`Agent joined: ${socket.id} | Online agents: ${agentCount}`);
   });
 
   // Customer escalates to human
@@ -165,7 +169,14 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
+    const wasAgent = socket.rooms.has('agents_room');
+    if (wasAgent) {
+      agentCount = Math.max(0, agentCount - 1);
+      io.emit('agent_online_count', agentCount);
+      console.log(`Agent disconnected: ${socket.id} | Online agents: ${agentCount}`);
+    } else {
+      console.log(`User disconnected: ${socket.id}`);
+    }
   });
 });
 
