@@ -9,6 +9,8 @@ import Tabs from '@mui/material/Tabs';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
 
+const brandIcon = new URL('../../assets/icon-logo.svg', import.meta.url).href;
+
 export default function Header() {
   const { pathname } = useLocation();
   const activeTab = pathname === '/settings' ? '/settings' : '/';
@@ -23,20 +25,16 @@ export default function Header() {
       <Toolbar sx={{ minHeight: 64, px: 3, justifyContent: 'space-between' }}>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <Box
+            component="img"
+            src={brandIcon}
+            alt="SmartTicket logo"
             sx={{
               width: 32,
               height: 32,
               borderRadius: 1,
-              bgcolor: 'primary.main',
-              color: 'primary.contrastText',
-              display: 'grid',
-              placeItems: 'center',
-              typography: 'button',
-              fontWeight: 700,
+              objectFit: 'contain',
             }}
-          >
-            S
-          </Box>
+          />
           <Typography variant="subtitle1" fontWeight={600}>
             AcmeCorp Dashboard
           </Typography>
