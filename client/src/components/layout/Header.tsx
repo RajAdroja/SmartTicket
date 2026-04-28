@@ -23,7 +23,14 @@ export default function Header() {
       sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
     >
       <Toolbar sx={{ minHeight: 64, px: 3, justifyContent: 'space-between' }}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          component={NavLink}
+          to="/"
+          sx={{ color: 'inherit', textDecoration: 'none' }}
+        >
           <Box
             component="img"
             src={brandIcon}
