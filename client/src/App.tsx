@@ -12,7 +12,7 @@ function App() {
   return (
     <TicketProvider>
       <Router>
-        <div className="min-h-screen bg-zinc-50 font-sans antialiased text-zinc-900">
+        <div className="min-h-screen bg-background font-sans antialiased text-foreground">
           <Routes>
             {isAgentPort ? (
               // Port 5174: Agent Only

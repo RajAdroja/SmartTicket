@@ -41,12 +41,14 @@ declare module '@mui/material/Typography' {
   }
 }
 
-const theme = createTheme({
+export type AppThemeMode = 'light' | 'dark';
+
+export const createAppTheme = (mode: AppThemeMode) => createTheme({
   palette: {
-    mode: 'light',
+    mode,
     primary: {
-      main: brandTokens.colors.primary,
-      contrastText: brandTokens.colors.onPrimary,
+      main: mode === 'dark' ? brandTokens.colors.canvas : brandTokens.colors.primary,
+      contrastText: mode === 'dark' ? brandTokens.colors.primary : brandTokens.colors.onPrimary,
     },
     secondary: {
       main: brandTokens.colors.coral,
@@ -57,14 +59,14 @@ const theme = createTheme({
       main: brandTokens.colors.error,
     },
     background: {
-      default: brandTokens.colors.canvas,
-      paper: brandTokens.colors.canvas,
+      default: mode === 'dark' ? brandTokens.colors.darkNavy : brandTokens.colors.canvas,
+      paper: mode === 'dark' ? brandTokens.colors.primary : brandTokens.colors.canvas,
     },
     text: {
-      primary: brandTokens.colors.ink,
-      secondary: brandTokens.colors.bodyMuted,
+      primary: mode === 'dark' ? brandTokens.colors.onDark : brandTokens.colors.ink,
+      secondary: mode === 'dark' ? brandTokens.colors.muted : brandTokens.colors.bodyMuted,
     },
-    divider: brandTokens.colors.hairline,
+    divider: mode === 'dark' ? brandTokens.colors.slate : brandTokens.colors.hairline,
   },
   typography: {
     fontFamily: brandTokens.typography.fontFamilyBody,
@@ -186,8 +188,8 @@ const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          backgroundColor: brandTokens.colors.canvas,
-          color: brandTokens.colors.ink,
+          backgroundColor: mode === 'dark' ? brandTokens.colors.darkNavy : brandTokens.colors.canvas,
+          color: mode === 'dark' ? brandTokens.colors.onDark : brandTokens.colors.ink,
         },
         '*, *::before, *::after': {
           boxSizing: 'border-box',
@@ -206,7 +208,7 @@ const theme = createTheme({
         outlined: {
           borderRadius: brandTokens.shape.xl,
           padding: '6px 12px',
-          borderColor: brandTokens.colors.hairline,
+          borderColor: mode === 'dark' ? brandTokens.colors.slate : brandTokens.colors.hairline,
         },
       },
     },
@@ -214,7 +216,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: brandTokens.shape.sm,
-          border: `1px solid ${brandTokens.colors.cardBorder}`,
+          border: `1px solid ${mode === 'dark' ? brandTokens.colors.slate : brandTokens.colors.cardBorder}`,
           boxShadow: 'none',
         },
       },
@@ -223,7 +225,7 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: brandTokens.shape.sm,
-          border: `1px solid ${brandTokens.colors.cardBorder}`,
+          border: `1px solid ${mode === 'dark' ? brandTokens.colors.slate : brandTokens.colors.cardBorder}`,
           boxShadow: 'none',
         },
       },
@@ -233,7 +235,7 @@ const theme = createTheme({
         root: {
           borderRadius: brandTokens.shape.xs,
           '& .MuiOutlinedInput-notchedOutline': {
-            borderColor: brandTokens.colors.borderLight,
+            borderColor: mode === 'dark' ? brandTokens.colors.slate : brandTokens.colors.borderLight,
           },
           '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
             borderColor: brandTokens.colors.formFocus,
@@ -254,4 +256,6 @@ const theme = createTheme({
   },
 });
 
-export default theme;
+const defaultTheme = createAppTheme('light');
+
+export default defaultTheme;
