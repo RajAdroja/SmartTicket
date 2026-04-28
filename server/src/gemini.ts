@@ -15,15 +15,32 @@ const getSystemPrompt = async (company?: string) => {
     : `KNOWLEDGE BASE:\n${globalKb}`;
 
   return `
-You are the SmartTicket AI Assistant, providing Tier-1 support.
-Your goal is to answer generic user queries clearly and professionally using the provided knowledge base.
+You are the SmartTicket AI Assistant, providing Tier-1 support for a customer support platform.
+Your primary task is to answer customer questions using the company-specific knowledge base first, then the global knowledge base.
+If the company knowledge base contains a direct answer, use it. If the answer is not available, be honest and escalate when appropriate.
+
 ${combinedKb}
 
-If the user asks a question not covered by the knowledge base, do your best to answer, or suggest speaking to a human.
-If the user mentions "human", "agent", "escalate", or seems frustrated, you MUST suggest they escalate the ticket by saying something like: "It looks like you'd like to speak with a human agent. I am escalating this ticket for you."
-If the user says their problem is solved, says thank you, or indicates the conversation is over, acknowledge it and say exactly: "I am glad I could help! I will close this chat now."
-Keep your responses short (1-3 sentences) and conversational.
+Use only the knowledge given here. Do not invent facts. If the user asks for account-specific details, billing, passwords, or other sensitive operations, suggest a human agent.
+If the user asks for a human, mentions "agent", "escalate", "support", or shows frustration, set escalation preference to true.
+If the user confirms the issue is solved, says thank you, or indicates the conversation is over, set resolution preference to true and respond with: "I am glad I could help! I will close this chat now."
+Keep your replies short (1-3 sentences), helpful, and professional.
 `;
+};
+
+const parseAssistantResponse = (raw: string) => {
+  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (typeof parsed.reply === 'string' && typeof parsed.shouldEscalate === 'boolean' && typeof parsed.shouldResolve === 'boolean') {
+      return parsed;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 };
 
 export async function generateChatResponse(history: Message[], company?: string): Promise<{ reply: string, suggestEscalation: boolean, suggestResolution: boolean }> {
@@ -33,20 +50,46 @@ export async function generateChatResponse(history: Message[], company?: string)
       parts: [{ text: msg.text }]
     }));
 
+    const prompt = `Read the conversation and do two things.
+1) Generate a concise, helpful reply to the customer.
+2) Decide whether this conversation should be escalated to a human agent or resolved by AI.
+
+Return ONLY a JSON object with these properties:
+{
+  "reply": "...",
+  "shouldEscalate": true or false,
+  "shouldResolve": true or false
+}
+
+The reply must be short (1-3 sentences) and use the knowledge base if possible.
+If the customer asks for a human, expresses frustration, says the issue is unresolved, or the problem requires account-specific or complex workflow handling, set shouldEscalate to true.
+If the customer confirms the issue is solved or the conversation is complete, set shouldResolve to true.
+`; 
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
         { role: 'user', parts: [{ text: await getSystemPrompt(company) }] },
         { role: 'model', parts: [{ text: 'Understood. I will act as the SmartTicket AI Assistant.' }] },
-        ...contents
+        ...contents,
+        { role: 'user', parts: [{ text: prompt }] }
       ]
     });
 
-    const reply = response.text || "I'm having trouble connecting to my knowledge base right now.";
-    
-    const suggestEscalation = /escalat|human|agent/i.test(reply) && /human|agent|escalat/i.test(history[history.length - 1].text);
-    
-    const suggestResolution = /glad I could help|close this chat/i.test(reply);
+    const rawText = response.text || '';
+    const parsed = parseAssistantResponse(rawText);
+
+    if (parsed) {
+      return {
+        reply: parsed.reply,
+        suggestEscalation: parsed.shouldEscalate,
+        suggestResolution: parsed.shouldResolve
+      };
+    }
+
+    const reply = rawText || "I'm having trouble connecting to my knowledge base right now.";
+    const suggestEscalation = /escalat|human|agent/i.test(reply) && /human|agent|escalat|problem|issue/i.test(history[history.length - 1].text);
+    const suggestResolution = /glad I could help|close this chat|thank you|resolved/i.test(reply);
 
     return { reply, suggestEscalation, suggestResolution };
   } catch (error) {
