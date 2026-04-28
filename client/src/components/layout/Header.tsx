@@ -1,30 +1,73 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
+import AppBar from '@mui/material/AppBar';
+import Avatar from '@mui/material/Avatar';
+import Box from '@mui/material/Box';
+import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
+import Toolbar from '@mui/material/Toolbar';
+import Typography from '@mui/material/Typography';
 
 export default function Header() {
-  const navItemClass = ({ isActive }: { isActive: boolean }) =>
-    isActive
-      ? 'text-foreground font-semibold'
-      : 'text-muted-foreground hover:text-foreground transition-colors';
+  const { pathname } = useLocation();
+  const activeTab = pathname === '/settings' ? '/settings' : '/';
 
   return (
-    <header className="h-16 bg-card border-b border-border flex items-center px-6 justify-between shrink-0">
-      <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-          S
-        </div>
-        <span className="font-semibold text-foreground">AcmeCorp Dashboard</span>
-      </div>
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <NavLink to="/" className={navItemClass} end>
-          Overview
-        </NavLink>
-        <span className="text-muted-foreground/70">Integrations</span>
-        <NavLink to="/settings" className={navItemClass}>
-          Settings
-        </NavLink>
-        <div className="w-8 h-8 rounded-full bg-muted"></div>
-      </div>
-    </header>
+    <AppBar
+      position="static"
+      color="transparent"
+      elevation={0}
+      sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}
+    >
+      <Toolbar sx={{ minHeight: 64, px: 3, justifyContent: 'space-between' }}>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: 1,
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              display: 'grid',
+              placeItems: 'center',
+              typography: 'button',
+              fontWeight: 700,
+            }}
+          >
+            S
+          </Box>
+          <Typography variant="subtitle1" fontWeight={600}>
+            AcmeCorp Dashboard
+          </Typography>
+        </Stack>
+
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Tabs
+            value={activeTab}
+            textColor="primary"
+            indicatorColor="primary"
+            sx={{
+              minHeight: 36,
+              '& .MuiTab-root': {
+                minHeight: 36,
+                px: 1.25,
+                py: 0.25,
+                minWidth: 'auto',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                textTransform: 'none',
+                color: 'text.secondary',
+              },
+            }}
+          >
+            <Tab value="/" label="Overview" component={NavLink} to="/" />
+            <Tab value="integrations" label="Integrations" disabled />
+            <Tab value="/settings" label="Settings" component={NavLink} to="/settings" />
+          </Tabs>
+          <Avatar sx={{ width: 32, height: 32 }} />
+        </Stack>
+      </Toolbar>
+    </AppBar>
   );
 }

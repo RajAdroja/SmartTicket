@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Box from '@mui/material/Box';
 import CustomerView from './pages/CustomerView';
 import AgentDashboard from './pages/AgentDashboard';
-import SettingsPage from './pages/SettingsPage';
+import Settings from './pages/Settings.tsx';
 import { TicketProvider } from './context/TicketContext';
 
 function App() {
@@ -12,7 +13,14 @@ function App() {
   return (
     <TicketProvider>
       <Router>
-        <div className="min-h-screen bg-background font-sans antialiased text-foreground">
+        <Box
+          sx={{
+            minHeight: '100vh',
+            bgcolor: 'background.default',
+            color: 'text.primary',
+            typography: 'body1',
+          }}
+        >
           <Routes>
             {isAgentPort ? (
               // Port 5174: Agent Only
@@ -24,12 +32,12 @@ function App() {
               // Port 5173: Customer Only
               <>
                 <Route path="/" element={<CustomerView />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings" element={<Settings />} />
                 <Route path="*" element={<CustomerView />} />
               </>
             )}
           </Routes>
-        </div>
+        </Box>
       </Router>
     </TicketProvider>
   );

@@ -1,9 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, Send, Bot, User, PhoneCall, Paperclip, Star } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Input } from '../ui/input';
-import { Button } from '../ui/button';
-import { ScrollArea } from '../ui/scroll-area';
+import { MessageSquare, X, Send, Bot, PhoneCall, Paperclip, Star } from 'lucide-react';
+import Badge from '@mui/material/Badge';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import IconButton from '@mui/material/IconButton';
+import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { useTickets, Message } from '../../context/TicketContext';
 
 const API_URL = 'http://localhost:5001';
@@ -249,220 +255,280 @@ export default function ChatWidget() {
     setHasSubmittedCsat(true);
   };
 
+  const visibleMessages = messages.filter((msg) => !msg.isInternal);
+  const isCompactWidget =
+    !ticketId &&
+    !isResolved &&
+    !isTyping &&
+    !attachment &&
+    visibleMessages.length <= 1;
+
   return (
     <>
-      {}
       {zoomedImage && (
-        <div 
-          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
+        <Box
+          sx={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1500,
+            bgcolor: 'rgba(0, 0, 0, 0.8)',
+            display: 'grid',
+            placeItems: 'center',
+            p: 2,
+            cursor: 'zoom-out',
+          }}
           onClick={() => setZoomedImage(null)}
         >
-          <img src={zoomedImage} alt="Zoomed attachment" className="max-w-full max-h-full object-contain rounded-lg shadow-2xl" />
-          <button 
-            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 backdrop-blur-sm transition-colors"
+          <Box component="img" src={zoomedImage} alt="Zoomed attachment" sx={{ maxWidth: '100%', maxHeight: '100%', borderRadius: 1 }} />
+          <IconButton
             onClick={() => setZoomedImage(null)}
+            sx={{ position: 'absolute', top: 16, right: 16, color: 'common.white', bgcolor: 'rgba(255,255,255,0.15)' }}
           >
             <X size={24} />
-          </button>
-        </div>
+          </IconButton>
+        </Box>
       )}
 
-      <div className="fixed bottom-6 right-6 z-50">
-      {!isOpen && (
-        <button 
-          onClick={() => { setIsOpen(true); setUnreadCount(0); }}
-          className="relative w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 active:scale-95"
-        >
-          <MessageSquare size={24} />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md animate-bounce">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      )}
-
-      {isOpen && (
-        <Card className="w-[380px] h-[600px] max-h-[80vh] flex flex-col shadow-2xl border-zinc-200/60 overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <CardHeader className="bg-indigo-600 text-white p-4 flex flex-row items-center justify-between shrink-0 rounded-t-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
-                <Bot size={20} />
-              </div>
-              <div className="flex flex-col">
-                <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  SmartTicket Support
-                </CardTitle>
-                <p className="text-xs text-indigo-200 flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${agentOnlineCount > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
-                  {ticketId ? 'Connected to Agent' : agentOnlineCount > 0 ? 'Agents Online' : 'No Agents Online'}
-                </p>
-              </div>
-            </div>
-            <button 
+      <Box sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1200 }}>
+        {!isOpen && (
+          <Badge badgeContent={unreadCount} color="error" overlap="circular" invisible={unreadCount === 0}>
+            <IconButton
               onClick={() => {
-                setIsOpen(false);
+                setIsOpen(true);
                 setUnreadCount(0);
-                if (!ticketId && messages.length > 1) {
-                  markAiResolved();
-                  localStorage.removeItem('smartTicket_messages');
-                  setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
-                }
-              }} 
-              className="text-white/70 hover:text-white transition-colors"
+              }}
+              sx={{
+                width: 56,
+                height: 56,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                boxShadow: 6,
+                '&:hover': { bgcolor: 'primary.dark' },
+              }}
             >
-              <X size={20} />
-            </button>
-          </CardHeader>
-          
-          <CardContent className="flex-1 p-0 overflow-hidden bg-zinc-50 flex flex-col relative">
-            <div className="flex-1 p-4 overflow-y-auto" ref={scrollRef}>
-              <div className="space-y-4 flex flex-col pb-4">
-                {messages.filter(msg => !msg.isInternal).map(msg => (
-                <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] p-3 rounded-2xl text-sm shadow-sm ${
-                    msg.sender === 'user' 
-                      ? 'bg-indigo-600 text-white rounded-tr-sm' 
-                      : msg.sender === 'agent'
-                        ? 'bg-emerald-600 text-white rounded-tl-sm'
-                        : 'bg-white text-zinc-800 border border-zinc-100 rounded-tl-sm'
-                  }`}>
-                    {msg.sender === 'agent' && <div className="text-[10px] uppercase font-bold text-emerald-200 mb-1">Agent</div>}
-                    {msg.text && <div className="text-sm">{msg.text}</div>}
-                    {msg.attachment && (
-                      <img 
-                        src={msg.attachment} 
-                        alt="Attachment" 
-                        className="mt-2 rounded-md max-w-full max-h-40 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" 
-                        onClick={() => setZoomedImage(msg.attachment!)}
-                      />
-                    )}
-                  </div>
-                </div>
-                ))}
-                {(isTyping || (ticketId && typingIndicators[ticketId]?.agent)) && !isResolved && (
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-zinc-100 p-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                        <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                        <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce"></span>
-                      </div>
-                      <span className="text-xs text-zinc-400">{ticketId ? 'Agent is typing...' : 'AI is typing...'}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </CardContent>
+              <MessageSquare size={24} />
+            </IconButton>
+          </Badge>
+        )}
 
-          <div className="p-3 bg-zinc-50 border-t border-zinc-100">
-            {isResolved ? (
-              <div className="flex flex-col gap-3">
-                {!hasSubmittedCsat ? (
-                  <div className="bg-white border border-zinc-200 p-3 rounded-lg shadow-sm flex flex-col items-center">
-                    <p className="text-xs text-zinc-600 font-medium mb-2">How was your experience?</p>
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <button key={star} onClick={() => handleCsatSubmit(star)} className="p-1 hover:text-amber-500 text-zinc-300 transition-colors">
-                          <Star size={24} className="fill-current" />
-                        </button>
+        {isOpen && (
+          <Card
+            sx={{
+              width: 380,
+              maxWidth: 'calc(100vw - 32px)',
+              height: isCompactWidget ? 420 : 560,
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: 8,
+            }}
+          >
+            <Box
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                px: 2,
+                py: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 1,
+              }}
+            >
+              <Stack direction="row" spacing={1.25} alignItems="center">
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                    display: 'grid',
+                    placeItems: 'center',
+                  }}
+                >
+                  <Bot size={20} />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" fontWeight={700}>
+                    SmartTicket Support
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                    {ticketId ? 'Connected to Agent' : agentOnlineCount > 0 ? 'Agents Online' : 'No Agents Online'}
+                  </Typography>
+                </Box>
+              </Stack>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setIsOpen(false);
+                  setUnreadCount(0);
+                  if (!ticketId && messages.length > 1) {
+                    markAiResolved();
+                    localStorage.removeItem('smartTicket_messages');
+                    setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
+                  }
+                }}
+                sx={{ color: 'inherit' }}
+              >
+                <X size={18} />
+              </IconButton>
+            </Box>
+
+            <Box sx={{ flex: 1, minHeight: 0, bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
+              <Box ref={scrollRef} sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
+                <Stack spacing={1.5}>
+                  {visibleMessages.map((msg) => (
+                    <Box key={msg.id} sx={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start' }}>
+                      <Box
+                        sx={(theme) => ({
+                          maxWidth: '82%',
+                          px: 1.5,
+                          py: 1.25,
+                          borderRadius: 2,
+                          bgcolor:
+                            msg.sender === 'user'
+                              ? 'primary.main'
+                              : msg.sender === 'agent'
+                                ? 'success.main'
+                                : 'background.paper',
+                          color: msg.sender === 'bot' ? 'text.primary' : 'common.white',
+                          border: msg.sender === 'bot' ? `1px solid ${theme.palette.divider}` : 'none',
+                        })}
+                      >
+                        {msg.sender === 'agent' && (
+                          <Typography variant="caption" sx={{ display: 'block', opacity: 0.85, mb: 0.5, fontWeight: 700 }}>
+                            Agent
+                          </Typography>
+                        )}
+                        {msg.text && <Typography variant="body2">{msg.text}</Typography>}
+                        {msg.attachment && (
+                          <Box
+                            component="img"
+                            src={msg.attachment}
+                            alt="Attachment"
+                            onClick={() => setZoomedImage(msg.attachment!)}
+                            sx={{
+                              mt: 1,
+                              borderRadius: 1,
+                              maxWidth: '100%',
+                              maxHeight: 160,
+                              objectFit: 'cover',
+                              cursor: 'zoom-in',
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                  ))}
+
+                  {visibleMessages.length <= 1 && !isResolved && (
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                      {['Billing question', 'Order update', 'Talk to support'].map((prompt) => (
+                        <Chip key={prompt} label={prompt} size="small" onClick={() => setInput(prompt)} />
                       ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center p-2 text-sm text-emerald-600 font-medium">
-                    Thank you for your feedback!
-                  </div>
-                )}
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 gap-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                    onClick={handleStartNewChat}
-                  >
-                    Start New Chat
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1 gap-2 text-zinc-600 border-zinc-200 hover:bg-zinc-50"
-                    onClick={handleDownloadTranscript}
-                  >
-                    Download Transcript
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <>
-                {!ticketId ? (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mb-3 gap-2 text-zinc-600 hover:text-indigo-600 border-zinc-200"
-                    onClick={handleEscalate}
-                  >
-                    <PhoneCall size={14} /> Talk to Human
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full mb-3 gap-2 text-rose-600 hover:text-rose-700 border-zinc-200"
-                    onClick={handleEndChat}
-                  >
-                    <X size={14} /> End Chat
-                  </Button>
-                )}
-                
-                {attachment && (
-                  <div className="mb-3 relative inline-block">
-                    <img src={attachment} alt="Preview" className="h-16 w-16 object-cover rounded-md border border-zinc-200 shadow-sm" />
-                    <button 
-                      type="button"
-                      onClick={() => setAttachment(null)}
-                      className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-sm hover:bg-rose-600 transition-colors"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )}
+                    </Stack>
+                  )}
 
-                <form onSubmit={handleSend} className="flex gap-2">
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={handleFileChange}
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="icon" 
-                    className={`shrink-0 ${attachment ? 'text-indigo-600 border-indigo-600 bg-indigo-50' : 'text-zinc-400'}`}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Paperclip size={18} />
-                  </Button>
-                  <Input 
-                    value={input}
-                    onChange={handleInputChange}
-                    placeholder="Type your message..."
-                    disabled={isTyping && !ticketId}
-                    className="bg-white border-zinc-200"
-                  />
-                  <Button type="submit" disabled={(!input.trim() && !attachment) || (isTyping && !ticketId)} className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0">
-                    <Send size={18} />
-                  </Button>
-                </form>
-              </>
-            )}
-          </div>
-        </Card>
-      )}
-    </div>
+                  {(isTyping || (ticketId && typingIndicators[ticketId]?.agent)) && !isResolved && (
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-start' }}>
+                      <Box sx={{ px: 1.5, py: 1, borderRadius: 2, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {ticketId ? 'Agent is typing...' : 'AI is typing...'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </Stack>
+              </Box>
+            </Box>
+
+            <Divider />
+            <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
+              {isResolved ? (
+                <Stack spacing={1.5}>
+                  {!hasSubmittedCsat ? (
+                    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, p: 1.5 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                        How was your experience?
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} sx={{ mt: 1, justifyContent: 'center' }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <IconButton key={star} onClick={() => handleCsatSubmit(star)} size="small" color="warning">
+                            <Star size={20} />
+                          </IconButton>
+                        ))}
+                      </Stack>
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="success.main" textAlign="center" fontWeight={600}>
+                      Thank you for your feedback!
+                    </Typography>
+                  )}
+                  <Stack direction="row" spacing={1}>
+                    <Button variant="outlined" fullWidth onClick={handleStartNewChat}>
+                      Start New Chat
+                    </Button>
+                    <Button variant="outlined" fullWidth onClick={handleDownloadTranscript}>
+                      Download Transcript
+                    </Button>
+                  </Stack>
+                </Stack>
+              ) : (
+                <>
+                  {!ticketId ? (
+                    <Button variant="outlined" fullWidth sx={{ mb: 1.25 }} onClick={handleEscalate} startIcon={<PhoneCall size={14} />}>
+                      Talk to Human
+                    </Button>
+                  ) : (
+                    <Button variant="outlined" color="error" fullWidth sx={{ mb: 1.25 }} onClick={handleEndChat} startIcon={<X size={14} />}>
+                      End Chat
+                    </Button>
+                  )}
+
+                  {attachment && (
+                    <Box sx={{ mb: 1.25, position: 'relative', width: 64 }}>
+                      <Box component="img" src={attachment} alt="Preview" sx={{ width: 64, height: 64, borderRadius: 1, objectFit: 'cover' }} />
+                      <IconButton size="small" onClick={() => setAttachment(null)} sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'error.main', color: 'error.contrastText', '&:hover': { bgcolor: 'error.dark' } }}>
+                        <X size={12} />
+                      </IconButton>
+                    </Box>
+                  )}
+
+                  <Box component="form" onSubmit={handleSend} sx={{ display: 'flex', gap: 1 }}>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
+                    <IconButton
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      color={attachment ? 'primary' : 'default'}
+                      sx={{ border: 1, borderColor: 'divider' }}
+                    >
+                      <Paperclip size={18} />
+                    </IconButton>
+                    <TextField
+                      value={input}
+                      onChange={handleInputChange}
+                      placeholder="Type your message..."
+                      disabled={isTyping && !ticketId}
+                      size="small"
+                      fullWidth
+                    />
+                    <Button type="submit" variant="contained" disabled={(!input.trim() && !attachment) || (isTyping && !ticketId)} sx={{ minWidth: 44, px: 1.25 }}>
+                      <Send size={18} />
+                    </Button>
+                  </Box>
+                </>
+              )}
+            </Box>
+          </Card>
+        )}
+      </Box>
     </>
   );
 }
