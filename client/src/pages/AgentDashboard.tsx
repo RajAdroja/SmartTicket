@@ -197,33 +197,33 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      <div className="h-screen bg-[#FAFAFA] flex flex-col font-sans text-zinc-900 overflow-hidden">
-      <header className="h-16 bg-white border-b border-zinc-200 flex items-center px-6 justify-between shrink-0 z-20 relative">
+      <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
+      <header className="h-16 bg-slate-900 text-white flex items-center px-6 justify-between shrink-0 shadow-sm z-20 relative">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-md bg-zinc-900 flex items-center justify-center font-bold text-sm">
-            <span className="text-white">T</span>
+          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-sm shadow-inner ring-1 ring-white/10">
+            <span className="text-white">ST</span>
           </div>
-          <span className="font-semibold tracking-tight text-zinc-900">
-            Agent Workspace
+          <span className="font-semibold tracking-tight text-white">
+            SmartTicket Hub
           </span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex bg-zinc-100 rounded-md p-1 border border-zinc-200/60">
+          <div className="flex bg-slate-800/80 rounded-lg p-1.5 border border-slate-700">
             <button 
               onClick={() => setActiveTab('queue')}
-              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'queue' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${activeTab === 'queue' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
             >
               Live Queue
             </button>
             <button 
               onClick={() => setActiveTab('analytics')}
-              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'analytics' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${activeTab === 'analytics' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
             >
               Analytics
             </button>
             <button 
               onClick={() => setActiveTab('knowledge')}
-              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'knowledge' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
+              className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${activeTab === 'knowledge' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
             >
               Knowledge Base
             </button>
@@ -231,17 +231,17 @@ export default function AgentDashboard() {
           <div className="flex items-center gap-4 text-sm font-medium">
             <button
               onClick={() => setSoundEnabled(p => !p)}
-              className="text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100"
+              className="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800"
               title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
-            <div className="flex items-center gap-2 border-l border-zinc-200 pl-4 h-8">
+            <div className="flex items-center gap-2 border-l border-slate-700 pl-4 h-8">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-zinc-800"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
               </span>
-              <span className="text-zinc-600">Online</span>
+              <span className="text-slate-200">Online</span>
             </div>
           </div>
         </div>
@@ -249,20 +249,21 @@ export default function AgentDashboard() {
 
       <main className="flex-1 flex overflow-hidden">
         {}
-        <div className="w-[320px] bg-white border-r border-zinc-200 flex flex-col z-10 shrink-0">
-          <div className="p-4 border-b border-zinc-100 flex justify-between items-center shrink-0">
-            <h2 className="font-semibold text-zinc-900 text-xs tracking-wider flex items-center gap-2 uppercase">
-              <Users size={14} className="text-zinc-400" /> Inbox
+        <div className="w-[340px] bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] relative">
+          <div className="p-5 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/50">
+            <h2 className="font-semibold text-slate-800 text-xs tracking-wider flex items-center gap-2 uppercase">
+              <Users size={14} className="text-blue-600" /> Inbox
             </h2>
             <div className="flex gap-2">
-              <Badge className="bg-zinc-100 text-zinc-800 hover:bg-zinc-100 shadow-none border-0 text-[10px] py-0">{activeTickets.length} Active</Badge>
-              <Badge variant="outline" className="text-zinc-500 text-[10px] py-0 border-zinc-200">{tickets.length} Total</Badge>
+              <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 shadow-none border border-blue-200/50 text-[10px] py-0">{activeTickets.length} Active</Badge>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col bg-zinc-50/50">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
             {tickets.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-sm flex flex-col items-center gap-2">
-                <CheckCircle size={24} className="text-zinc-300" />
+              <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                  <CheckCircle size={24} className="text-slate-400" />
+                </div>
                 Inbox Zero!
               </div>
             ) : (
@@ -275,33 +276,33 @@ export default function AgentDashboard() {
                       setSelectedTicketId(ticket.id);
                       setActiveTab('queue');
                     }}
-                    className={`w-full p-4 text-left transition-colors flex flex-col gap-1.5 border-b border-zinc-100 ${
+                    className={`w-full p-4 rounded-xl text-left transition-all duration-200 flex flex-col gap-2 border ${
                       selectedTicketId === ticket.id 
-                        ? 'bg-zinc-100 border-l-[3px] border-l-zinc-900' 
+                        ? 'bg-blue-50/50 border-blue-200 shadow-sm ring-1 ring-blue-100' 
                         : isResolved 
-                          ? 'bg-transparent opacity-60 hover:opacity-100 hover:bg-zinc-50 border-l-[3px] border-l-transparent' 
-                          : 'bg-white hover:bg-zinc-50 border-l-[3px] border-l-transparent'
+                          ? 'bg-white/50 opacity-60 hover:opacity-100 hover:bg-white border-transparent hover:border-slate-200' 
+                          : 'bg-white hover:border-slate-300 border-slate-200 shadow-sm'
                     }`}
                   >
                     <div className="flex justify-between items-start w-full">
                       <div className="flex flex-col gap-1 items-start">
-                        <span className={`font-semibold text-sm ${isResolved ? 'text-zinc-500' : 'text-zinc-900'}`}>
+                        <span className={`font-semibold text-sm ${isResolved ? 'text-slate-500' : 'text-slate-900'} ${selectedTicketId === ticket.id ? 'text-blue-900' : ''}`}>
                           {ticket.customerName}
                         </span>
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {isResolved ? (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-200 text-zinc-600 border-0">Closed</Badge>
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-slate-100 text-slate-500 border-0">Closed</Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-100 text-zinc-800 border border-zinc-200">Open</Badge>
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-emerald-50 text-emerald-700 border border-emerald-200/50">Open</Badge>
                           )}
-                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-zinc-500 bg-white border-zinc-200">{ticket.tag}</Badge>}
+                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
                         </div>
                       </div>
-                      <span className="text-xs font-medium text-zinc-400 shrink-0">
+                      <span className="text-xs font-medium text-slate-400 shrink-0">
                         {new Date(ticket.escalatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div className={`text-xs w-full truncate block mt-1 ${isResolved ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                    <div className={`text-xs w-full truncate block mt-1 ${isResolved ? 'text-slate-400' : 'text-slate-500'}`}>
                       {ticket.messages[ticket.messages.length - 1]?.text || "No text content"}
                     </div>
                   </button>
@@ -312,7 +313,7 @@ export default function AgentDashboard() {
         </div>
 
         {}
-        <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-y-auto">
+        <div className="flex-1 flex flex-col bg-slate-50 overflow-y-auto">
           {activeTab === 'analytics' ? (
             <div className="p-8 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="mb-8">
@@ -470,41 +471,41 @@ export default function AgentDashboard() {
               </div>
             </div>
           ) : !selectedTicket ? (
-            <div className="flex-1 flex items-center justify-center text-zinc-400 flex-col gap-4 animate-in fade-in duration-700">
-              <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200">
-                <MessageSquare size={24} className="text-zinc-400" />
+            <div className="flex-1 flex items-center justify-center text-slate-400 flex-col gap-4 animate-in fade-in duration-700 bg-slate-50">
+              <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-sm">
+                <MessageSquare size={28} className="text-slate-400" />
               </div>
-              <p className="font-medium text-zinc-500 text-sm">Select a ticket to join the conversation.</p>
+              <p className="font-medium text-slate-500">Select a ticket to join the conversation.</p>
             </div>
           ) : (
             <div className="flex-1 flex overflow-hidden">
-              <div className="flex-1 flex flex-col min-w-0 bg-[#FAFAFA]">
+              <div className="flex-1 flex flex-col min-w-0 bg-slate-50/50 relative">
                 {}
-                <div className="flex flex-col shrink-0 bg-white border-b border-zinc-200 z-10 sticky top-0">
-                  <div className="h-16 px-6 flex items-center justify-between">
+                <div className="flex flex-col shrink-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 z-10 sticky top-0 shadow-sm">
+                  <div className="h-[72px] px-8 flex items-center justify-between">
                   <div>
-                    <h2 className="text-base font-semibold text-zinc-900 flex items-center gap-3">
-                      <div className="w-6 h-6 rounded bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-bold border border-zinc-200">
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center text-sm border border-blue-200/50">
                         {selectedTicket.customerName.charAt(0)}
                       </div>
                       {selectedTicket.customerName}
-                      {selectedTicket.tag && <Badge variant="outline" className="bg-zinc-50 text-zinc-600 border-zinc-200 shadow-none font-medium">{selectedTicket.tag}</Badge>}
+                      {selectedTicket.tag && <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">{selectedTicket.tag}</Badge>}
                     </h2>
                   </div>
                   {selectedTicket.status === 'active' && (
-                    <Button variant="outline" onClick={handleResolve} className="gap-2 text-zinc-700 border-zinc-300 hover:bg-zinc-100 transition-colors font-medium rounded-md h-9 px-4">
-                      <CheckCircle2 size={16} /> Resolve Issue
+                    <Button variant="outline" onClick={handleResolve} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 transition-colors font-semibold rounded-lg shadow-sm">
+                      <CheckCircle2 size={16} /> Mark as Resolved
                     </Button>
                   )}
                 </div>
                 {selectedTicket.summary && (
-                  <div className="px-6 pb-4 pt-0">
-                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex gap-3 items-start shadow-sm">
-                      <div className="bg-white p-1 rounded-md border border-zinc-200">
-                        <Sparkles className="text-zinc-600" size={14} />
+                  <div className="px-8 pb-4 pt-0">
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3 items-start">
+                      <div className="bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
+                        <Sparkles className="text-slate-600" size={16} />
                       </div>
-                      <div className="text-sm text-zinc-700 leading-relaxed pt-0.5">
-                        <span className="font-semibold text-zinc-900 mr-1">AI Context:</span>
+                      <div className="text-sm text-slate-700 leading-relaxed pt-0.5">
+                        <span className="font-semibold text-slate-900 mr-2">AI Context:</span>
                         {selectedTicket.summary}
                       </div>
                     </div>
@@ -513,29 +514,29 @@ export default function AgentDashboard() {
               </div>
 
               {}
-              <div className="flex-1 p-6 overflow-y-auto" ref={scrollRef}>
-                <div className="max-w-3xl mx-auto space-y-4 pb-4">
+              <div className="flex-1 p-8 overflow-y-auto" ref={scrollRef}>
+                <div className="max-w-3xl mx-auto space-y-6 pb-4">
                   {selectedTicket.messages.map((msg, idx) => {
                     const isAgent = msg.sender === 'agent';
                     const isBot = msg.sender === 'bot';
                     
                     return (
-                      <div key={msg.id} className={`flex w-full ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-4 rounded-xl relative group ${
+                      <div key={msg.id} className={`flex w-full animate-in slide-in-from-bottom-2 fade-in duration-300 ${isAgent ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-2xl relative group shadow-sm ${
                           isAgent 
                             ? (msg.isInternal 
-                                ? 'bg-zinc-100 text-zinc-900 rounded-tr-sm border border-zinc-200' 
-                                : 'bg-zinc-900 text-white rounded-tr-sm shadow-sm') 
+                                ? 'bg-amber-50 text-amber-900 rounded-tr-sm border border-amber-200/50' 
+                                : 'bg-blue-600 text-white rounded-tr-sm border border-blue-700/50') 
                             : isBot 
-                              ? 'bg-white text-zinc-800 rounded-tl-sm border border-zinc-200 shadow-sm'
-                              : 'bg-white text-zinc-900 border border-zinc-200 rounded-tl-sm shadow-sm'
+                              ? 'bg-white text-slate-700 rounded-tl-sm border border-slate-200'
+                              : 'bg-white text-slate-900 border border-slate-200 rounded-tl-sm'
                         }`}>
                           {msg.isInternal && (
-                            <div className="absolute -top-3 right-4 flex items-center gap-1 bg-white text-zinc-600 text-[10px] font-bold px-2 py-0.5 rounded border border-zinc-200 uppercase tracking-wider shadow-sm">
+                            <div className="absolute -top-3 right-4 flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider shadow-sm">
                               <EyeOff size={10} /> Internal Note
                             </div>
                           )}
-                          <div className={`text-xs mb-1.5 font-semibold tracking-wide ${isAgent ? (msg.isInternal ? 'text-zinc-500' : 'text-zinc-400') : 'text-zinc-400'}`}>
+                          <div className={`text-xs mb-1.5 font-bold tracking-wide ${isAgent ? (msg.isInternal ? 'text-amber-600' : 'text-blue-200') : 'text-slate-400'}`}>
                             {isAgent ? 'You' : isBot ? 'AI Assistant' : selectedTicket.customerName}
                           </div>
                           {msg.text && <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</div>}
@@ -543,7 +544,7 @@ export default function AgentDashboard() {
                             <img 
                               src={msg.attachment} 
                               alt="Attachment" 
-                              className="mt-3 rounded-lg max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-all border border-zinc-200" 
+                              className="mt-3 rounded-xl max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-all border border-slate-200 shadow-sm" 
                               onClick={() => setZoomedImage(msg.attachment!)}
                             />
                           )}
@@ -568,19 +569,19 @@ export default function AgentDashboard() {
 
               {}
               {selectedTicket.status === 'active' ? (
-                <div className="p-4 bg-white border-t border-zinc-200 flex flex-col gap-3 relative z-20">
+                <div className="p-6 bg-white border-t border-slate-200 flex flex-col gap-4 relative z-20 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
                   {isGeneratingReplies ? (
-                    <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium px-2">
-                      <Loader2 size={14} className="animate-spin text-zinc-400" />
-                      Generating suggestions...
+                    <div className="flex items-center gap-2 text-xs text-blue-600 font-medium px-2 animate-pulse">
+                      <Loader2 size={14} className="animate-spin text-blue-500" />
+                      Crafting suggestions...
                     </div>
                   ) : smartReplies.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 animate-in slide-in-from-bottom-2">
                       {smartReplies.map((suggestion, idx) => (
                         <button 
                           key={idx}
                           onClick={() => setReply(suggestion)}
-                          className="px-3 py-1.5 bg-white text-zinc-700 hover:bg-zinc-50 rounded-md text-xs font-medium transition-all shadow-sm border border-zinc-200"
+                          className="px-4 py-2 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 rounded-lg text-sm font-medium transition-all border border-slate-200 shadow-sm"
                         >
                           {suggestion}
                         </button>
@@ -589,14 +590,14 @@ export default function AgentDashboard() {
                   ) : null}
 
                   {attachment && (
-                    <div className="mb-2 relative inline-block self-start">
-                      <img src={attachment} alt="Preview" className="h-16 w-16 object-cover rounded-md border border-zinc-200 shadow-sm" />
+                    <div className="mb-2 relative inline-block self-start animate-in zoom-in-95">
+                      <img src={attachment} alt="Preview" className="h-20 w-20 object-cover rounded-lg border border-slate-200 shadow-md ring-2 ring-white" />
                       <button 
                         type="button"
                         onClick={() => setAttachment(null)}
-                        className="absolute -top-2 -right-2 bg-zinc-900 text-white rounded-full p-1 shadow-sm hover:bg-zinc-800 transition-colors"
+                        className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1.5 shadow-md hover:bg-rose-600 transition-colors"
                       >
-                        <X size={12} strokeWidth={2} />
+                        <X size={12} strokeWidth={2.5} />
                       </button>
                     </div>
                   )}
@@ -613,40 +614,40 @@ export default function AgentDashboard() {
                       type="button" 
                       variant="outline" 
                       size="icon" 
-                      className={`shrink-0 h-10 w-10 rounded-md transition-all ${attachment ? 'text-zinc-900 border-zinc-400 bg-zinc-100' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'}`}
+                      className={`shrink-0 h-12 w-12 rounded-xl transition-all ${attachment ? 'text-blue-600 border-blue-300 bg-blue-50 ring-2 ring-blue-100' : 'text-slate-400 hover:bg-slate-50 hover:text-slate-700 border-slate-200'}`}
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <Paperclip size={18} />
+                      <Paperclip size={20} />
                     </Button>
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative group">
                       <Input 
                         value={reply}
                         onChange={handleInputChange}
                         placeholder="Type a message..."
-                        className="w-full h-10 pl-3 pr-3 rounded-md bg-white border-zinc-300 shadow-sm focus-visible:ring-1 focus-visible:ring-zinc-900 focus-visible:border-zinc-900 transition-all text-sm"
+                        className="w-full h-12 pl-4 pr-4 rounded-xl bg-slate-50 border-slate-200 shadow-sm focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 transition-all text-base focus:bg-white"
                       />
                     </div>
-                    <div className="flex items-center gap-2 shrink-0 bg-zinc-50 p-1 rounded-md border border-zinc-200">
+                    <div className="flex items-center gap-2 shrink-0 bg-slate-50 p-1 rounded-xl border border-slate-200">
                       <button
                         type="button"
                         onClick={() => setIsInternal(!isInternal)}
-                        className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-all ${
-                          isInternal ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100'
+                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                          isInternal ? 'bg-amber-100 text-amber-900 shadow-sm border border-amber-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
                         }`}
                       >
-                        <EyeOff size={14} className={isInternal ? "" : "opacity-50"} />
+                        <EyeOff size={16} className={isInternal ? "" : "opacity-50"} />
                         Internal Note
                       </button>
                     </div>
-                    <Button type="submit" disabled={!reply.trim() && !attachment} className={`h-10 px-6 rounded-md font-medium transition-all ${isInternal ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-300 shadow-sm" : "bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm"}`}>
-                      <Send size={16} className="mr-2" /> {isInternal ? 'Save' : 'Send'}
+                    <Button type="submit" disabled={!reply.trim() && !attachment} className={`h-12 px-6 rounded-xl font-bold transition-all shadow-sm ${isInternal ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}>
+                      <Send size={18} className="mr-2" /> {isInternal ? 'Save' : 'Send'}
                     </Button>
                   </form>
                 </div>
               ) : (
-                <div className="p-4 bg-zinc-50 border-t border-zinc-200 text-center flex flex-col items-center justify-center gap-1 relative z-20">
-                  <span className="text-zinc-600 font-semibold text-sm">Ticket Closed</span>
-                  <span className="text-zinc-500 text-xs">This session is read-only.</span>
+                <div className="p-6 bg-slate-50 border-t border-slate-200 text-center flex flex-col items-center justify-center gap-2 relative z-20">
+                  <span className="text-slate-500 font-bold uppercase tracking-wider text-sm">Ticket Closed</span>
+                  <span className="text-slate-400 text-xs">This session is read-only.</span>
                 </div>
               )}
               </div>
