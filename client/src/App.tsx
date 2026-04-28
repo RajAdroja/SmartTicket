@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import CustomerView from './pages/CustomerView';
 import AgentDashboard from './pages/AgentDashboard';
+import SettingsPage from './pages/SettingsPage';
 import { TicketProvider } from './context/TicketContext';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
               // Port 5173: Customer Only
               <>
                 <Route path="/" element={<CustomerView />} />
+                <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<CustomerView />} />
               </>
             )}
