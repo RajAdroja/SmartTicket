@@ -304,10 +304,10 @@ export default function ChatWidget() {
               sx={{
                 width: 56,
                 height: 56,
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                bgcolor: '#1863dc',
+                color: '#ffffff',
                 boxShadow: 6,
-                '&:hover': { bgcolor: 'primary.dark' },
+                '&:hover': { bgcolor: '#1450b0' },
               }}
             >
               <MessageSquare size={24} />
@@ -330,8 +330,8 @@ export default function ChatWidget() {
           >
             <Box
               sx={{
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
+                bgcolor: '#1863dc',
+                color: '#ffffff',
                 px: 2,
                 py: 1.5,
                 display: 'flex',
@@ -390,13 +390,18 @@ export default function ChatWidget() {
                           px: 1.5,
                           py: 1.25,
                           borderRadius: 2,
+                          // Use fixed chat colors — never inherit primary.main which flips to
+                          // white in dark mode and makes user text invisible
                           bgcolor:
                             msg.sender === 'user'
-                              ? 'primary.main'
+                              ? '#1863dc'
                               : msg.sender === 'agent'
-                                ? 'success.main'
-                                : 'background.paper',
-                          color: msg.sender === 'bot' ? 'text.primary' : 'common.white',
+                                ? '#16a34a'
+                                : theme.palette.background.paper,
+                          color:
+                            msg.sender === 'bot'
+                              ? theme.palette.text.primary
+                              : '#ffffff',
                           border: msg.sender === 'bot' ? `1px solid ${theme.palette.divider}` : 'none',
                         })}
                       >
@@ -523,7 +528,7 @@ export default function ChatWidget() {
                       size="small"
                       fullWidth
                     />
-                    <Button type="submit" variant="contained" disabled={(!input.trim() && !attachment) || (isTyping && !ticketId)} sx={{ minWidth: 44, px: 1.25 }}>
+                    <Button type="submit" variant="contained" disabled={(!input.trim() && !attachment) || (isTyping && !ticketId)} sx={{ minWidth: 44, px: 1.25, bgcolor: '#1863dc', '&:hover': { bgcolor: '#1450b0' }, '&.Mui-disabled': { bgcolor: 'action.disabledBackground' } }}>
                       <Send size={18} />
                     </Button>
                   </Box>
