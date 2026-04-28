@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTickets, Ticket } from '../context/TicketContext';
-import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save } from 'lucide-react';
+import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save, Moon, Sun, Volume2, VolumeX } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -19,15 +19,58 @@ export default function AgentDashboard() {
   const [isInternal, setIsInternal] = useState(false);
   const [kbText, setKbText] = useState('');
   const [isSavingKb, setIsSavingKb] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('agent_dark_mode') === 'true');
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
+  const prevTicketCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Persist dark mode preference
+  useEffect(() => {
+    localStorage.setItem('agent_dark_mode', String(isDarkMode));
+  }, [isDarkMode]);
+
+  // Persist sound preference
+  useEffect(() => {
+    localStorage.setItem('agent_sound', String(soundEnabled));
+  }, [soundEnabled]);
+
+  // Play chime using Web Audio API
+  const playChime = useCallback(() => {
+    if (!soundEnabled) return;
+    try {
+      const ctx = new AudioContext();
+      const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
+      frequencies.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.18);
+        gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + i * 0.18 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.4);
+        osc.start(ctx.currentTime + i * 0.18);
+        osc.stop(ctx.currentTime + i * 0.18 + 0.5);
+      });
+    } catch (e) { /* Audio context not available */ }
+  }, [soundEnabled]);
+
+  // Sound notification on new ticket
+  const activeTickets = tickets.filter(t => t.status === 'active');
+  useEffect(() => {
+    if (activeTickets.length > prevTicketCountRef.current) {
+      playChime();
+    }
+    prevTicketCountRef.current = activeTickets.length;
+  }, [activeTickets.length, playChime]);
 
   useEffect(() => {
     joinAgentRoom();
   }, [joinAgentRoom]);
 
-  const activeTickets = tickets.filter(t => t.status === 'active');
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
 
   // Fetch smart replies when a ticket is selected or new message arrives
@@ -137,8 +180,8 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      <div className="h-screen bg-zinc-100 flex flex-col font-sans text-zinc-800">
-      <header className="h-14 bg-zinc-900 text-white flex items-center px-6 justify-between shrink-0 shadow-md z-10">
+      <div className={`h-screen flex flex-col font-sans transition-colors duration-300 ${isDarkMode ? 'bg-zinc-950 text-zinc-100' : 'bg-zinc-100 text-zinc-800'}`}>
+      <header className={`h-14 flex items-center px-6 justify-between shrink-0 shadow-md z-10 ${isDarkMode ? 'bg-zinc-900 text-white' : 'bg-zinc-900 text-white'}`}>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold">
             T
@@ -166,9 +209,23 @@ export default function AgentDashboard() {
               Knowledge Base
             </button>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <div className="flex items-center gap-3 text-sm">
+            <button
+              onClick={() => setSoundEnabled(p => !p)}
+              className="text-zinc-400 hover:text-white transition-colors p-1"
+              title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
+            >
+              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            </button>
+            <button
+              onClick={() => setIsDarkMode(p => !p)}
+              className="text-zinc-400 hover:text-white transition-colors p-1"
+              title="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
+            <span className="flex items-center gap-2 border-l border-zinc-700 pl-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               Online
             </span>
           </div>
