@@ -197,113 +197,121 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      <div className="h-screen bg-zinc-100 flex flex-col font-sans text-zinc-800">
-      <header className="h-14 bg-zinc-900 text-white flex items-center px-6 justify-between shrink-0 shadow-md z-10">
+      <div className="h-screen bg-[#FAFAFA] flex flex-col font-sans text-zinc-900 overflow-hidden">
+      <header className="h-16 bg-white border-b border-zinc-200 flex items-center px-6 justify-between shrink-0 z-20 relative">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center font-bold">
-            T
+          <div className="w-8 h-8 rounded-md bg-zinc-900 flex items-center justify-center font-bold text-sm">
+            <span className="text-white">T</span>
           </div>
-          <span className="font-semibold text-sm tracking-tight uppercase">Agent Workspace</span>
+          <span className="font-semibold tracking-tight text-zinc-900">
+            Agent Workspace
+          </span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex bg-zinc-800 rounded-md p-1">
+          <div className="flex bg-zinc-100 rounded-md p-1 border border-zinc-200/60">
             <button 
               onClick={() => setActiveTab('queue')}
-              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === 'queue' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'queue' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Live Queue
             </button>
             <button 
               onClick={() => setActiveTab('analytics')}
-              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === 'analytics' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'analytics' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Analytics
             </button>
             <button 
               onClick={() => setActiveTab('knowledge')}
-              className={`px-4 py-1.5 text-sm rounded-md transition-colors ${activeTab === 'knowledge' ? 'bg-zinc-700 text-white' : 'text-zinc-400 hover:text-zinc-200'}`}
+              className={`px-4 py-1.5 text-sm rounded transition-all duration-200 font-medium ${activeTab === 'knowledge' ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200/50' : 'text-zinc-500 hover:text-zinc-900'}`}
             >
               Knowledge Base
             </button>
           </div>
-          <div className="flex items-center gap-3 text-sm">
+          <div className="flex items-center gap-4 text-sm font-medium">
             <button
               onClick={() => setSoundEnabled(p => !p)}
-              className="text-zinc-400 hover:text-white transition-colors p-1"
+              className="text-zinc-400 hover:text-zinc-900 transition-colors p-2 rounded-full hover:bg-zinc-100"
               title={soundEnabled ? 'Mute notifications' : 'Enable notifications'}
             >
-              {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
-            <span className="flex items-center gap-2 border-l border-zinc-700 pl-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Online
-            </span>
+            <div className="flex items-center gap-2 border-l border-zinc-200 pl-4 h-8">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-zinc-800"></span>
+              </span>
+              <span className="text-zinc-600">Online</span>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="flex-1 flex overflow-hidden">
         {}
-        <div className="w-80 bg-white border-r border-zinc-200 flex flex-col">
-          <div className="p-4 border-b border-zinc-200 bg-zinc-50 flex justify-between items-center">
-            <h2 className="font-semibold text-zinc-700 text-sm uppercase tracking-wider">Queue</h2>
+        <div className="w-[320px] bg-white border-r border-zinc-200 flex flex-col z-10 shrink-0">
+          <div className="p-4 border-b border-zinc-100 flex justify-between items-center shrink-0">
+            <h2 className="font-semibold text-zinc-900 text-xs tracking-wider flex items-center gap-2 uppercase">
+              <Users size={14} className="text-zinc-400" /> Inbox
+            </h2>
             <div className="flex gap-2">
-              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">{activeTickets.length} Active</Badge>
-              <Badge variant="outline" className="text-zinc-500">{tickets.length} Total</Badge>
+              <Badge className="bg-zinc-100 text-zinc-800 hover:bg-zinc-100 shadow-none border-0 text-[10px] py-0">{activeTickets.length} Active</Badge>
+              <Badge variant="outline" className="text-zinc-500 text-[10px] py-0 border-zinc-200">{tickets.length} Total</Badge>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto bg-zinc-50/50">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col bg-zinc-50/50">
             {tickets.length === 0 ? (
-              <div className="p-8 text-center text-zinc-400 text-sm">
-                No escalations yet.
+              <div className="p-8 text-center text-zinc-400 text-sm flex flex-col items-center gap-2">
+                <CheckCircle size={24} className="text-zinc-300" />
+                Inbox Zero!
               </div>
             ) : (
-              <div className="flex flex-col">
-                {[...tickets].reverse().map(ticket => {
-                  const isResolved = ticket.status === 'resolved';
-                  return (
+              [...tickets].reverse().map(ticket => {
+                const isResolved = ticket.status === 'resolved';
+                return (
                   <button
                     key={ticket.id}
                     onClick={() => setSelectedTicketId(ticket.id)}
-                    className={`p-4 border-b text-left transition-all flex flex-col gap-2 ${
+                    className={`w-full p-4 text-left transition-colors flex flex-col gap-1.5 border-b border-zinc-100 ${
                       selectedTicketId === ticket.id 
-                        ? 'bg-indigo-50 border-l-4 border-l-indigo-600 border-b-zinc-200' 
+                        ? 'bg-zinc-100 border-l-[3px] border-l-zinc-900' 
                         : isResolved 
-                          ? 'bg-zinc-50/50 opacity-75 hover:opacity-100 border-l-4 border-l-transparent border-b-zinc-200 grayscale-[0.5]' 
-                          : 'bg-white hover:bg-zinc-50 border-l-4 border-l-transparent border-b-zinc-100'
+                          ? 'bg-transparent opacity-60 hover:opacity-100 hover:bg-zinc-50 border-l-[3px] border-l-transparent' 
+                          : 'bg-white hover:bg-zinc-50 border-l-[3px] border-l-transparent'
                     }`}
                   >
                     <div className="flex justify-between items-start w-full">
-                      <div className="flex flex-col gap-1.5 items-start">
-                        <span className={`font-semibold ${isResolved ? 'text-zinc-500' : 'text-zinc-900'}`}>{ticket.customerName}</span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className={`font-semibold text-sm ${isResolved ? 'text-zinc-500' : 'text-zinc-900'}`}>
+                          {ticket.customerName}
+                        </span>
                         <div className="flex items-center gap-1 flex-wrap">
                           {isResolved ? (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-200 text-zinc-600 hover:bg-zinc-200">Closed</Badge>
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-200 text-zinc-600 border-0">Closed</Badge>
                           ) : (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Open</Badge>
+                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-zinc-100 text-zinc-800 border border-zinc-200">Open</Badge>
                           )}
-                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-zinc-500">{ticket.tag}</Badge>}
+                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-zinc-500 bg-white border-zinc-200">{ticket.tag}</Badge>}
                         </div>
                       </div>
-                      <span className="text-xs text-zinc-400 shrink-0">
+                      <span className="text-xs font-medium text-zinc-400 shrink-0">
                         {new Date(ticket.escalatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <span className={`text-xs truncate w-full ${isResolved ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                      {ticket.messages[ticket.messages.length - 1]?.text}
-                    </span>
+                    <div className={`text-xs w-full truncate block mt-1 ${isResolved ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      {ticket.messages[ticket.messages.length - 1]?.text || "No text content"}
+                    </div>
                   </button>
-                  );
-                })}
-              </div>
+                );
+              })
             )}
           </div>
         </div>
 
         {}
-        <div className="flex-1 flex flex-col bg-zinc-50 overflow-y-auto">
+        <div className="flex-1 flex flex-col bg-[#FAFAFA] overflow-y-auto">
           {activeTab === 'analytics' ? (
-            <div className="p-8 max-w-5xl mx-auto w-full animate-in fade-in">
+            <div className="p-8 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-zinc-900">Platform Analytics</h1>
                 <p className="text-zinc-500">Real-time metrics for your SmartTicket deployment.</p>
@@ -459,39 +467,41 @@ export default function AgentDashboard() {
               </div>
             </div>
           ) : !selectedTicket ? (
-            <div className="flex-1 flex items-center justify-center text-zinc-400 flex-col gap-3">
-              <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center">
-                <User size={24} className="text-zinc-300" />
+            <div className="flex-1 flex items-center justify-center text-zinc-400 flex-col gap-4 animate-in fade-in duration-700">
+              <div className="w-16 h-16 rounded-full bg-zinc-100 flex items-center justify-center border border-zinc-200">
+                <MessageSquare size={24} className="text-zinc-400" />
               </div>
-              <p>Select a ticket to view the chat history and reply.</p>
+              <p className="font-medium text-zinc-500 text-sm">Select a ticket to join the conversation.</p>
             </div>
           ) : (
             <div className="flex-1 flex overflow-hidden">
-              <div className="flex-1 flex flex-col min-w-0">
+              <div className="flex-1 flex flex-col min-w-0 bg-[#FAFAFA]">
                 {}
-                <div className="flex flex-col shrink-0 bg-white border-b border-zinc-200">
+                <div className="flex flex-col shrink-0 bg-white border-b border-zinc-200 z-10 sticky top-0">
                   <div className="h-16 px-6 flex items-center justify-between">
                   <div>
-                    <h2 className="font-semibold text-zinc-900 flex items-center gap-2">
-                      Chat with {selectedTicket.customerName}
-                      {selectedTicket.tag && <Badge variant="secondary" className="bg-indigo-50 text-indigo-700">{selectedTicket.tag}</Badge>}
+                    <h2 className="text-base font-semibold text-zinc-900 flex items-center gap-3">
+                      <div className="w-6 h-6 rounded bg-zinc-100 text-zinc-700 flex items-center justify-center text-xs font-bold border border-zinc-200">
+                        {selectedTicket.customerName.charAt(0)}
+                      </div>
+                      {selectedTicket.customerName}
+                      {selectedTicket.tag && <Badge variant="outline" className="bg-zinc-50 text-zinc-600 border-zinc-200 shadow-none font-medium">{selectedTicket.tag}</Badge>}
                     </h2>
-                    <p className="text-xs text-zinc-500">
-                      {selectedTicket.status === 'resolved' ? 'Ticket Resolved' : 'Escalated from AI Assistant'}
-                    </p>
                   </div>
                   {selectedTicket.status === 'active' && (
-                    <Button variant="outline" size="sm" onClick={handleResolve} className="gap-2 text-emerald-600 border-emerald-200 hover:bg-emerald-50">
-                      <CheckCircle2 size={16} /> Mark Resolved
+                    <Button variant="outline" onClick={handleResolve} className="gap-2 text-zinc-700 border-zinc-300 hover:bg-zinc-100 transition-colors font-medium rounded-md h-9 px-4">
+                      <CheckCircle2 size={16} /> Resolve Issue
                     </Button>
                   )}
                 </div>
                 {selectedTicket.summary && (
-                  <div className="px-6 pb-3 pt-1">
-                    <div className="bg-indigo-50/50 border border-indigo-100 rounded-lg p-3 flex gap-3 items-start">
-                      <Sparkles className="text-indigo-500 shrink-0 mt-0.5" size={16} />
-                      <div className="text-sm text-indigo-900">
-                        <span className="font-semibold">AI Summary: </span>
+                  <div className="px-6 pb-4 pt-0">
+                    <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex gap-3 items-start shadow-sm">
+                      <div className="bg-white p-1 rounded-md border border-zinc-200">
+                        <Sparkles className="text-zinc-600" size={14} />
+                      </div>
+                      <div className="text-sm text-zinc-700 leading-relaxed pt-0.5">
+                        <span className="font-semibold text-zinc-900 mr-1">AI Context:</span>
                         {selectedTicket.summary}
                       </div>
                     </div>
@@ -501,34 +511,36 @@ export default function AgentDashboard() {
 
               {}
               <div className="flex-1 p-6 overflow-y-auto" ref={scrollRef}>
-                <div className="max-w-3xl mx-auto space-y-6 pb-4">
+                <div className="max-w-3xl mx-auto space-y-4 pb-4">
                   {selectedTicket.messages.map((msg, idx) => {
                     const isAgent = msg.sender === 'agent';
                     const isBot = msg.sender === 'bot';
                     
                     return (
-                      <div key={msg.id} className={`flex ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[75%] p-4 rounded-2xl shadow-sm relative ${
+                      <div key={msg.id} className={`flex w-full ${isAgent ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[80%] p-4 rounded-xl relative group ${
                           isAgent 
-                            ? (msg.isInternal ? 'bg-amber-100 text-amber-900 rounded-tr-sm border border-amber-200' : 'bg-indigo-600 text-white rounded-tr-sm') 
+                            ? (msg.isInternal 
+                                ? 'bg-zinc-100 text-zinc-900 rounded-tr-sm border border-zinc-200' 
+                                : 'bg-zinc-900 text-white rounded-tr-sm shadow-sm') 
                             : isBot 
-                              ? 'bg-zinc-200 text-zinc-800 rounded-tl-sm'
-                              : 'bg-white text-zinc-800 border border-zinc-200 rounded-tl-sm'
+                              ? 'bg-white text-zinc-800 rounded-tl-sm border border-zinc-200 shadow-sm'
+                              : 'bg-white text-zinc-900 border border-zinc-200 rounded-tl-sm shadow-sm'
                         }`}>
                           {msg.isInternal && (
-                            <div className="absolute -top-3 right-2 flex items-center gap-1 bg-amber-200 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                              <EyeOff size={10} /> Internal
+                            <div className="absolute -top-3 right-4 flex items-center gap-1 bg-white text-zinc-600 text-[10px] font-bold px-2 py-0.5 rounded border border-zinc-200 uppercase tracking-wider shadow-sm">
+                              <EyeOff size={10} /> Internal Note
                             </div>
                           )}
-                          <div className={`text-xs mb-1 font-semibold ${isAgent ? (msg.isInternal ? 'text-amber-700' : 'text-indigo-200') : isBot ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                          <div className={`text-xs mb-1.5 font-semibold tracking-wide ${isAgent ? (msg.isInternal ? 'text-zinc-500' : 'text-zinc-400') : 'text-zinc-400'}`}>
                             {isAgent ? 'You' : isBot ? 'AI Assistant' : selectedTicket.customerName}
                           </div>
-                          {msg.text && <div className="text-sm">{msg.text}</div>}
+                          {msg.text && <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</div>}
                           {msg.attachment && (
                             <img 
                               src={msg.attachment} 
                               alt="Attachment" 
-                              className="mt-2 rounded-md max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-opacity" 
+                              className="mt-3 rounded-lg max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-all border border-zinc-200" 
                               onClick={() => setZoomedImage(msg.attachment!)}
                             />
                           )}
@@ -553,11 +565,11 @@ export default function AgentDashboard() {
 
               {}
               {selectedTicket.status === 'active' ? (
-                <div className="p-4 bg-white border-t border-zinc-200 flex flex-col gap-3">
+                <div className="p-4 bg-white border-t border-zinc-200 flex flex-col gap-3 relative z-20">
                   {isGeneratingReplies ? (
-                    <div className="flex items-center gap-2 text-xs text-indigo-600 font-medium px-1">
-                      <Loader2 size={14} className="animate-spin" />
-                      Generating Smart Replies...
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 font-medium px-2">
+                      <Loader2 size={14} className="animate-spin text-zinc-400" />
+                      Generating suggestions...
                     </div>
                   ) : smartReplies.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -565,7 +577,7 @@ export default function AgentDashboard() {
                         <button 
                           key={idx}
                           onClick={() => setReply(suggestion)}
-                          className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800 rounded-full text-xs font-medium transition-colors border border-indigo-100"
+                          className="px-3 py-1.5 bg-white text-zinc-700 hover:bg-zinc-50 rounded-md text-xs font-medium transition-all shadow-sm border border-zinc-200"
                         >
                           {suggestion}
                         </button>
@@ -579,14 +591,14 @@ export default function AgentDashboard() {
                       <button 
                         type="button"
                         onClick={() => setAttachment(null)}
-                        className="absolute -top-2 -right-2 bg-rose-500 text-white rounded-full p-1 shadow-sm hover:bg-rose-600 transition-colors"
+                        className="absolute -top-2 -right-2 bg-zinc-900 text-white rounded-full p-1 shadow-sm hover:bg-zinc-800 transition-colors"
                       >
-                        <X size={12} />
+                        <X size={12} strokeWidth={2} />
                       </button>
                     </div>
                   )}
 
-                  <form onSubmit={handleSend} className="max-w-4xl mx-auto w-full flex gap-3">
+                  <form onSubmit={handleSend} className="max-w-4xl mx-auto w-full flex gap-3 items-end">
                     <input 
                       type="file" 
                       ref={fileInputRef} 
@@ -598,72 +610,79 @@ export default function AgentDashboard() {
                       type="button" 
                       variant="outline" 
                       size="icon" 
-                      className={`shrink-0 ${attachment ? 'text-indigo-600 border-indigo-600 bg-indigo-50' : 'text-zinc-400'}`}
+                      className={`shrink-0 h-10 w-10 rounded-md transition-all ${attachment ? 'text-zinc-900 border-zinc-400 bg-zinc-100' : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'}`}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Paperclip size={18} />
                     </Button>
-                    <Input 
-                      value={reply}
-                      onChange={handleInputChange}
-                      placeholder="Type your reply..."
-                      className="flex-1"
-                    />
-                    <div className="flex items-center gap-2 shrink-0 bg-zinc-100 p-1 rounded-md border border-zinc-200">
+                    <div className="flex-1 relative">
+                      <Input 
+                        value={reply}
+                        onChange={handleInputChange}
+                        placeholder="Type a message..."
+                        className="w-full h-10 pl-3 pr-3 rounded-md bg-white border-zinc-300 shadow-sm focus-visible:ring-1 focus-visible:ring-zinc-900 focus-visible:border-zinc-900 transition-all text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 bg-zinc-50 p-1 rounded-md border border-zinc-200">
                       <button
                         type="button"
                         onClick={() => setIsInternal(!isInternal)}
-                        className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                          isInternal ? 'bg-amber-100 text-amber-800 shadow-sm border border-amber-200' : 'text-zinc-500 hover:text-zinc-700'
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-semibold transition-all ${
+                          isInternal ? 'bg-white text-zinc-900 shadow-sm border border-zinc-200' : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100'
                         }`}
                       >
-                        {isInternal && <EyeOff size={14} />}
-                        Whisper Note
+                        <EyeOff size={14} className={isInternal ? "" : "opacity-50"} />
+                        Internal Note
                       </button>
                     </div>
-                    <Button type="submit" disabled={!reply.trim() && !attachment} className={isInternal ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-indigo-600 hover:bg-indigo-700"}>
-                      <Send size={18} className="mr-2" /> {isInternal ? 'Add Note' : 'Send Reply'}
+                    <Button type="submit" disabled={!reply.trim() && !attachment} className={`h-10 px-6 rounded-md font-medium transition-all ${isInternal ? "bg-zinc-100 hover:bg-zinc-200 text-zinc-900 border border-zinc-300 shadow-sm" : "bg-zinc-900 hover:bg-zinc-800 text-white shadow-sm"}`}>
+                      <Send size={16} className="mr-2" /> {isInternal ? 'Save' : 'Send'}
                     </Button>
                   </form>
                 </div>
               ) : (
-                <div className="p-4 bg-zinc-50 border-t border-zinc-200 text-center flex flex-col items-center justify-center gap-1">
-                  <span className="text-zinc-500 font-medium">This ticket has been resolved.</span>
-                  <span className="text-zinc-400 text-sm">You can no longer send messages to this session.</span>
+                <div className="p-4 bg-zinc-50 border-t border-zinc-200 text-center flex flex-col items-center justify-center gap-1 relative z-20">
+                  <span className="text-zinc-600 font-semibold text-sm">Ticket Closed</span>
+                  <span className="text-zinc-500 text-xs">This session is read-only.</span>
                 </div>
               )}
               </div>
 
               {}
               {selectedTicket.userProfile && (
-                <div className="w-72 bg-white border-l border-zinc-200 flex flex-col shrink-0 overflow-y-auto hidden lg:flex">
-                  <div className="p-6 border-b border-zinc-100 flex flex-col items-center text-center">
-                    <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-2xl font-bold mb-3 shadow-inner">
+                <div className="w-[280px] bg-white border-l border-zinc-200 flex flex-col shrink-0 overflow-y-auto hidden xl:flex shadow-none">
+                  <div className="p-6 border-b border-zinc-100 flex flex-col items-center text-center bg-zinc-50/50">
+                    <div className="w-16 h-16 rounded bg-zinc-100 flex items-center justify-center text-zinc-800 text-2xl font-semibold mb-3 border border-zinc-200">
                       {selectedTicket.userProfile.name.charAt(0).toUpperCase()}
                     </div>
-                    <h3 className="font-bold text-zinc-900 text-lg">{selectedTicket.userProfile.name}</h3>
-                    <p className="text-sm text-zinc-500 mb-2">{selectedTicket.userProfile.email}</p>
-                    <Badge variant="secondary" className="bg-zinc-100 text-zinc-700">{selectedTicket.userProfile.company}</Badge>
+                    <h3 className="font-semibold text-zinc-900 text-lg tracking-tight">{selectedTicket.userProfile.name}</h3>
+                    <p className="text-sm text-zinc-500 mb-3">{selectedTicket.userProfile.email}</p>
+                    <Badge variant="secondary" className="bg-white text-zinc-700 font-medium border border-zinc-200 shadow-sm rounded-md">{selectedTicket.userProfile.company}</Badge>
                   </div>
                   
                   <div className="p-6">
-                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-4">Past Tickets</h4>
+                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <FileText size={14} /> History
+                    </h4>
                     <div className="flex flex-col gap-3">
                       {tickets
                         .filter(t => t.userProfile?.email === selectedTicket.userProfile?.email && t.id !== selectedTicket.id)
                         .map(t => (
-                          <div key={t.id} className="p-3 bg-zinc-50 rounded-lg border border-zinc-100">
-                            <div className="flex justify-between items-start mb-1">
-                              <span className="text-xs font-semibold text-zinc-700">{new Date(t.escalatedAt).toLocaleDateString()}</span>
-                              <Badge variant="outline" className={`text-[9px] py-0 ${t.status === 'resolved' ? 'text-emerald-600 border-emerald-200 bg-emerald-50' : 'text-amber-600 border-amber-200 bg-amber-50'}`}>
+                          <div key={t.id} className="p-3 bg-white hover:bg-zinc-50 transition-colors rounded-md border border-zinc-200 shadow-sm">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-xs font-medium text-zinc-600">{new Date(t.escalatedAt).toLocaleDateString()}</span>
+                              <Badge variant="outline" className={`text-[9px] py-0 h-4 rounded-sm ${t.status === 'resolved' ? 'text-zinc-600 border-zinc-200 bg-zinc-100' : 'text-emerald-700 border-emerald-200 bg-emerald-50'}`}>
                                 {t.status}
                               </Badge>
                             </div>
-                            <p className="text-xs text-zinc-500 line-clamp-2">{t.summary || t.messages[0]?.text || 'No summary available'}</p>
+                            <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">{t.summary || t.messages[0]?.text || 'No summary available'}</p>
                           </div>
                         ))}
                       {tickets.filter(t => t.userProfile?.email === selectedTicket.userProfile?.email && t.id !== selectedTicket.id).length === 0 && (
-                        <p className="text-xs text-zinc-400 italic">No previous tickets found.</p>
+                        <div className="py-4 flex flex-col items-center justify-center text-center gap-2 bg-zinc-50 rounded-md border border-zinc-200 border-dashed">
+                          <CheckCircle2 size={18} className="text-zinc-300" />
+                          <p className="text-xs text-zinc-500">First time reaching out.</p>
+                        </div>
                       )}
                     </div>
                   </div>
