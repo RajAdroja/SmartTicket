@@ -9,7 +9,7 @@ import { useTickets, Message } from '../../context/TicketContext';
 const API_URL = 'http://localhost:5001';
 
 export default function ChatWidget() {
-  const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat } = useTickets();
+  const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount } = useTickets();
   
   // Initialize state from localStorage if available
   const loadInitialMessages = () => {
@@ -27,6 +27,8 @@ export default function ChatWidget() {
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
   const [attachment, setAttachment] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevAgentMsgCountRef = useRef(0);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -93,6 +95,20 @@ export default function ChatWidget() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  // Track unread agent messages while widget is closed
+  useEffect(() => {
+    if (ticketId) {
+      const activeTicket = tickets.find(t => t.id === ticketId);
+      if (activeTicket) {
+        const agentMsgCount = activeTicket.messages.filter(m => m.sender === 'agent' && !m.isInternal).length;
+        if (!isOpen && agentMsgCount > prevAgentMsgCountRef.current) {
+          setUnreadCount(prev => prev + (agentMsgCount - prevAgentMsgCountRef.current));
+        }
+        prevAgentMsgCountRef.current = agentMsgCount;
+      }
+    }
+  }, [tickets, ticketId, isOpen]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInput(e.target.value);
@@ -265,10 +281,15 @@ export default function ChatWidget() {
       <div className="fixed bottom-6 right-6 z-50">
       {!isOpen && (
         <button 
-          onClick={() => setIsOpen(true)}
-          className="w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 active:scale-95"
+          onClick={() => { setIsOpen(true); setUnreadCount(0); }}
+          className="relative w-14 h-14 bg-indigo-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 active:scale-95"
         >
           <MessageSquare size={24} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-rose-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md animate-bounce">
+              {unreadCount}
+            </span>
+          )}
         </button>
       )}
 
@@ -281,12 +302,16 @@ export default function ChatWidget() {
               </div>
               <div>
                 <CardTitle className="text-base font-semibold">SmartTicket Support</CardTitle>
-                <p className="text-xs text-indigo-200">{ticketId ? 'Connected to Agent' : 'AI Assistant'}</p>
+                <p className="text-xs text-indigo-200 flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${agentOnlineCount > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>
+                  {ticketId ? 'Connected to Agent' : agentOnlineCount > 0 ? 'Agents Online' : 'No Agents Online'}
+                </p>
               </div>
             </div>
             <button 
               onClick={() => {
                 setIsOpen(false);
+                setUnreadCount(0);
                 if (!ticketId && messages.length > 1) {
                   markAiResolved();
                   localStorage.removeItem('smartTicket_messages');
