@@ -271,7 +271,10 @@ export default function AgentDashboard() {
                 return (
                   <button
                     key={ticket.id}
-                    onClick={() => setSelectedTicketId(ticket.id)}
+                    onClick={() => {
+                      setSelectedTicketId(ticket.id);
+                      setActiveTab('queue');
+                    }}
                     className={`w-full p-4 text-left transition-colors flex flex-col gap-1.5 border-b border-zinc-100 ${
                       selectedTicketId === ticket.id 
                         ? 'bg-zinc-100 border-l-[3px] border-l-zinc-900' 
@@ -649,45 +652,7 @@ export default function AgentDashboard() {
               </div>
 
               {}
-              {selectedTicket.userProfile && (
-                <div className="w-[280px] bg-white border-l border-zinc-200 flex flex-col shrink-0 overflow-y-auto hidden xl:flex shadow-none">
-                  <div className="p-6 border-b border-zinc-100 flex flex-col items-center text-center bg-zinc-50/50">
-                    <div className="w-16 h-16 rounded bg-zinc-100 flex items-center justify-center text-zinc-800 text-2xl font-semibold mb-3 border border-zinc-200">
-                      {selectedTicket.userProfile.name.charAt(0).toUpperCase()}
-                    </div>
-                    <h3 className="font-semibold text-zinc-900 text-lg tracking-tight">{selectedTicket.userProfile.name}</h3>
-                    <p className="text-sm text-zinc-500 mb-3">{selectedTicket.userProfile.email}</p>
-                    <Badge variant="secondary" className="bg-white text-zinc-700 font-medium border border-zinc-200 shadow-sm rounded-md">{selectedTicket.userProfile.company}</Badge>
-                  </div>
-                  
-                  <div className="p-6">
-                    <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <FileText size={14} /> History
-                    </h4>
-                    <div className="flex flex-col gap-3">
-                      {tickets
-                        .filter(t => t.userProfile?.email === selectedTicket.userProfile?.email && t.id !== selectedTicket.id)
-                        .map(t => (
-                          <div key={t.id} className="p-3 bg-white hover:bg-zinc-50 transition-colors rounded-md border border-zinc-200 shadow-sm">
-                            <div className="flex justify-between items-center mb-1.5">
-                              <span className="text-xs font-medium text-zinc-600">{new Date(t.escalatedAt).toLocaleDateString()}</span>
-                              <Badge variant="outline" className={`text-[9px] py-0 h-4 rounded-sm ${t.status === 'resolved' ? 'text-zinc-600 border-zinc-200 bg-zinc-100' : 'text-emerald-700 border-emerald-200 bg-emerald-50'}`}>
-                                {t.status}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">{t.summary || t.messages[0]?.text || 'No summary available'}</p>
-                          </div>
-                        ))}
-                      {tickets.filter(t => t.userProfile?.email === selectedTicket.userProfile?.email && t.id !== selectedTicket.id).length === 0 && (
-                        <div className="py-4 flex flex-col items-center justify-center text-center gap-2 bg-zinc-50 rounded-md border border-zinc-200 border-dashed">
-                          <CheckCircle2 size={18} className="text-zinc-300" />
-                          <p className="text-xs text-zinc-500">First time reaching out.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+
             </div>
           )}
         </div>
