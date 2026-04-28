@@ -22,6 +22,7 @@ export default function AgentDashboard() {
   const [isPdfUploading, setIsPdfUploading] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
+  const [ticketSearch, setTicketSearch] = useState('');
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [selectedKbCompany, setSelectedKbCompany] = useState('global');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
@@ -68,6 +69,16 @@ export default function AgentDashboard() {
   }, [joinAgentRoom]);
 
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
+  const filteredTickets = [...tickets].reverse().filter(ticket => {
+    const searchText = ticketSearch.trim().toLowerCase();
+    if (!searchText) return true;
+    return [
+      ticket.customerName,
+      ticket.id,
+      ticket.tag || '',
+      ticket.messages[ticket.messages.length - 1]?.text || ''
+    ].some(value => value.toLowerCase().includes(searchText));
+  });
 
   useEffect(() => {
     if (selectedTicketId && selectedTicket) {
@@ -259,6 +270,14 @@ export default function AgentDashboard() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
+            <div className="mb-3">
+              <Input
+                value={ticketSearch}
+                onChange={e => setTicketSearch(e.target.value)}
+                placeholder="Search tickets..."
+                className="w-full text-sm"
+              />
+            </div>
             {tickets.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
@@ -266,8 +285,15 @@ export default function AgentDashboard() {
                 </div>
                 Inbox Zero!
               </div>
+            ) : filteredTickets.length === 0 ? (
+              <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                  <CheckCircle size={24} className="text-slate-400" />
+                </div>
+                No tickets match your search.
+              </div>
             ) : (
-              [...tickets].reverse().map(ticket => {
+              filteredTickets.map(ticket => {
                 const isResolved = ticket.status === 'resolved';
                 return (
                   <button
