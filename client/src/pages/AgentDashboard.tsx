@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTickets, Ticket } from '../context/TicketContext';
-import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save, Volume2, VolumeX, FileText, UploadCloud, Trash2 } from 'lucide-react';
+import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCircle, Paperclip, Star, Sparkles, Loader2, X, Database, EyeOff, Save, Volume2, VolumeX, FileText, UploadCloud, Trash2, ArrowRightLeft } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 const API_URL = 'http://localhost:5001';
 
 export default function AgentDashboard() {
-  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus } = useTickets();
+  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [reply, setReply] = useState('');
   const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge'>('queue');
@@ -32,6 +32,14 @@ export default function AgentDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Transfer modal state
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferTargetId, setTransferTargetId] = useState('');
+  const [transferNote, setTransferNote] = useState('');
+
+  // Incoming transfer toast
+  const [incomingTransfer, setIncomingTransfer] = useState<{ ticketId: string; fromAgentName: string; note: string } | null>(null);
 
   useEffect(() => {
     localStorage.setItem('agent_sound', String(soundEnabled));
@@ -232,6 +240,26 @@ export default function AgentDashboard() {
     }
   };
 
+  // Watch for incoming transfer notifications from context
+  useEffect(() => {
+    if (transferNotification) {
+      setIncomingTransfer(transferNotification);
+      clearTransferNotification();
+      // Auto-dismiss after 8 seconds
+      const t = setTimeout(() => setIncomingTransfer(null), 8000);
+      return () => clearTimeout(t);
+    }
+  }, [transferNotification, clearTransferNotification]);
+
+  const handleTransferSubmit = () => {
+    if (!selectedTicketId || !transferTargetId) return;
+    transferTicket(selectedTicketId, transferTargetId, transferNote.trim());
+    setShowTransferModal(false);
+    setTransferTargetId('');
+    setTransferNote('');
+    setSelectedTicketId(null);
+  };
+
   return (
     <>
       {}
@@ -247,6 +275,117 @@ export default function AgentDashboard() {
           >
             <X size={24} />
           </button>
+        </div>
+      )}
+
+      {/* Transfer Modal */}
+      {showTransferModal && (
+        <div className="fixed inset-0 z-[110] bg-black/50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-5 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <ArrowRightLeft size={18} className="text-blue-600" /> Transfer Ticket
+                </h3>
+                <p className="text-sm text-slate-500 mt-0.5">Reassign this conversation to another online agent.</p>
+              </div>
+              <button onClick={() => setShowTransferModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Transfer To</label>
+              {onlineAgents.filter(a => a.agentId !== agentId).length === 0 ? (
+                <div className="text-sm text-slate-400 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                  No other agents are currently online.
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {onlineAgents.filter(a => a.agentId !== agentId).map(agent => (
+                    <button
+                      key={agent.agentId}
+                      onClick={() => setTransferTargetId(agent.agentId)}
+                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                        transferTargetId === agent.agentId
+                          ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold border border-blue-200/50">
+                        {agent.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-800">{agent.name}</div>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                          <span className="text-xs text-emerald-600 font-medium">Online</span>
+                        </div>
+                      </div>
+                      {transferTargetId === agent.agentId && (
+                        <CheckCircle size={16} className="text-blue-600 ml-auto" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Handoff Note <span className="text-slate-400 font-normal normal-case">(optional)</span></label>
+              <textarea
+                value={transferNote}
+                onChange={e => setTransferNote(e.target.value)}
+                placeholder="e.g. Customer needs billing specialist, already verified account..."
+                rows={3}
+                className="w-full p-3 rounded-xl border border-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-700 placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" onClick={() => setShowTransferModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleTransferSubmit}
+                disabled={!transferTargetId}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2 disabled:opacity-50"
+              >
+                <ArrowRightLeft size={15} /> Transfer Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Incoming Transfer Toast */}
+      {incomingTransfer && (
+        <div className="fixed bottom-6 right-6 z-[120] animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-white border border-blue-200 rounded-2xl shadow-2xl p-4 flex gap-3 items-start max-w-sm ring-1 ring-blue-100">
+            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+              <ArrowRightLeft size={18} className="text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-slate-900">Ticket Transferred to You</p>
+              <p className="text-xs text-slate-500 mt-0.5">From <span className="font-semibold text-slate-700">{incomingTransfer.fromAgentName}</span></p>
+              {incomingTransfer.note && (
+                <p className="text-xs text-slate-600 mt-1.5 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 italic">"{incomingTransfer.note}"</p>
+              )}
+              <button
+                onClick={() => {
+                  setSelectedTicketId(incomingTransfer.ticketId);
+                  setActiveTab('queue');
+                  setIncomingTransfer(null);
+                }}
+                className="mt-2.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors"
+              >
+                Open Ticket →
+              </button>
+            </div>
+            <button onClick={() => setIncomingTransfer(null)} className="text-slate-400 hover:text-slate-600 shrink-0 p-0.5">
+              <X size={16} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -586,6 +725,13 @@ export default function AgentDashboard() {
                   <div className="flex flex-wrap items-center gap-2">
                     {normalizeStatus(selectedTicket.status) !== 'resolved' && (
                       <>
+                        <Button
+                          variant="outline"
+                          onClick={() => { setShowTransferModal(true); setTransferTargetId(''); setTransferNote(''); }}
+                          className="gap-2 text-blue-700 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors font-semibold rounded-lg shadow-sm"
+                        >
+                          <ArrowRightLeft size={16} /> Transfer
+                        </Button>
                         <Button variant="outline" onClick={handleResolve} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 transition-colors font-semibold rounded-lg shadow-sm">
                           <CheckCircle2 size={16} /> Mark as Resolved
                         </Button>

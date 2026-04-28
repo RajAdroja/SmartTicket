@@ -32,9 +32,24 @@ export interface Metrics {
   csatCount: number;
 }
 
+export interface OnlineAgent {
+  agentId: string;
+  name: string;
+}
+
+export interface TransferNotification {
+  ticketId: string;
+  fromAgentName: string;
+  note: string;
+}
+
 interface TicketContextType {
   tickets: Ticket[];
   socket: Socket | null;
+  agentId: string;
+  onlineAgents: OnlineAgent[];
+  transferNotification: TransferNotification | null;
+  clearTransferNotification: () => void;
   escalateTicket: (ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }) => void;
   sendAgentReply: (ticketId: string, message: Message) => void;
   resolveTicket: (ticketId: string) => void;
@@ -47,11 +62,18 @@ interface TicketContextType {
   updateTicketStatus: (ticketId: string, status: Ticket['status']) => void;
   submitCsat: (rating: number, ticketId?: string) => void;
   agentOnlineCount: number;
+  transferTicket: (ticketId: string, toAgentId: string, note: string) => void;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
 const SOCKET_URL = 'http://localhost:5001';
+
+// Generate a unique agent ID per socket connection (unique per tab/session)
+// We use a module-level variable so it's stable for the lifetime of this page load
+// but different across tabs (unlike sessionStorage which is shared between same-origin tabs)
+const AGENT_ID = `agent-${Math.random().toString(36).slice(2, 10)}`;
+const AGENT_NAME = `Agent ${AGENT_ID.slice(-4)}`;
 
 export const TicketProvider = ({ children }: { children: ReactNode }) => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -59,6 +81,9 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   const [metrics, setMetrics] = useState<Metrics>({ aiResolved: 0, escalated: 0, humanResolved: 0, totalCsatScore: 0, csatCount: 0 });
   const [typingIndicators, setTypingIndicators] = useState<Record<string, { user: boolean; agent: boolean }>>({});
   const [agentOnlineCount, setAgentOnlineCount] = useState(0);
+  const [onlineAgents, setOnlineAgents] = useState<OnlineAgent[]>([]);
+  const [transferNotification, setTransferNotification] = useState<TransferNotification | null>(null);
+  const agentId = AGENT_ID;
 
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
@@ -112,6 +137,16 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
       setAgentOnlineCount(count);
     });
 
+    newSocket.on('online_agents', (agents: OnlineAgent[]) => {
+      setOnlineAgents(agents);
+    });
+
+    newSocket.on('ticket_transferred', (data: { ticketId: string; toAgentId: string; fromAgentName: string; note: string }) => {
+      if (data.toAgentId === agentId) {
+        setTransferNotification({ ticketId: data.ticketId, fromAgentName: data.fromAgentName, note: data.note });
+      }
+    });
+
     return () => {
       newSocket.close();
     };
@@ -161,7 +196,9 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
   const joinAgentRoom = useCallback(() => {
     if (socket) {
-      socket.emit('agent_join');
+      socket.emit('agent_join', { agentId: AGENT_ID, name: AGENT_NAME });
+      // Also request the current list immediately so we don't wait for the next join event
+      socket.emit('get_online_agents');
     }
   }, [socket]);
 
@@ -183,10 +220,21 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [socket]);
 
+  const transferTicket = useCallback((ticketId: string, toAgentId: string, note: string) => {
+    if (socket) {
+      socket.emit('transfer_ticket', { ticketId, toAgentId, note, fromAgentName: AGENT_NAME });
+    }
+  }, [socket]);
+
+  const clearTransferNotification = useCallback(() => {
+    setTransferNotification(null);
+  }, []);
+
   return (
     <TicketContext.Provider value={{ 
-      tickets, socket, escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
-      typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount
+      tickets, socket, agentId, onlineAgents, transferNotification, clearTransferNotification,
+      escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
+      typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount, transferTicket
     }}>
       {children}
     </TicketContext.Provider>

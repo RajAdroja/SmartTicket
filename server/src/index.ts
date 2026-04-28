@@ -97,12 +97,53 @@ app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
 
 let agentCount = 0;
 
+// Track online agents: socketId -> { agentId, name }
+const onlineAgents = new Map<string, { agentId: string; name: string }>();
+
 io.on('connection', (socket) => {
 
-  socket.on('agent_join', () => {
+  socket.on('agent_join', (payload?: { agentId?: string; name?: string }) => {
     socket.join('agents_room');
     agentCount++;
+
+    const agentId = payload?.agentId || socket.id;
+    const name = payload?.name || `Agent ${agentCount}`;
+    onlineAgents.set(socket.id, { agentId, name });
+
     io.emit('agent_online_count', agentCount);
+    // Broadcast updated agent list to all agents (including the one who just joined)
+    io.to('agents_room').emit('online_agents', Array.from(onlineAgents.values()));
+  });
+
+  // Allow any agent to request the current list at any time
+  socket.on('get_online_agents', () => {
+    socket.emit('online_agents', Array.from(onlineAgents.values()));
+  });
+
+  socket.on('transfer_ticket', async (data: { ticketId: string; toAgentId: string; note?: string; fromAgentName?: string }) => {
+    const { ticketId, toAgentId, note, fromAgentName } = data;
+
+    // Add a system message to the ticket thread so the history shows the transfer
+    const transferMsg: Message = {
+      id: `transfer-${Date.now()}`,
+      sender: 'bot',
+      text: `🔄 Ticket transferred${fromAgentName ? ` from ${fromAgentName}` : ''}${note ? `. Note: ${note}` : ''}.`,
+      isInternal: true,
+    };
+    await addMessageToTicket(ticketId, transferMsg);
+
+    // Notify all agents — the target agent will highlight it
+    io.to('agents_room').emit('ticket_transferred', {
+      ticketId,
+      toAgentId,
+      fromAgentName: fromAgentName || 'An agent',
+      note: note || '',
+      message: transferMsg,
+    });
+
+    // Also push the message update so the thread stays in sync
+    io.to('agents_room').emit('ticket_updated', { ticketId, message: transferMsg });
+    io.to(ticketId).emit('ticket_updated', { ticketId, message: transferMsg });
   });
 
   socket.on('escalate_ticket', async (data: { ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string } }) => {
@@ -183,11 +224,12 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    const wasAgent = socket.rooms.has('agents_room');
+    const wasAgent = onlineAgents.has(socket.id);
     if (wasAgent) {
+      onlineAgents.delete(socket.id);
       agentCount = Math.max(0, agentCount - 1);
       io.emit('agent_online_count', agentCount);
-    } else {
+      io.to('agents_room').emit('online_agents', Array.from(onlineAgents.values()));
     }
   });
 });

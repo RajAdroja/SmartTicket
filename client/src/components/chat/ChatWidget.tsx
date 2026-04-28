@@ -15,7 +15,7 @@ import { useTickets, Message } from '../../context/TicketContext';
 const API_URL = 'http://localhost:5001';
 
 export default function ChatWidget() {
-  const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount } = useTickets();
+  const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount, socket } = useTickets();
   
   const loadInitialMessages = () => {
     const saved = localStorage.getItem('smartTicket_messages');
@@ -61,10 +61,10 @@ export default function ChatWidget() {
   }, [isResolved]);
 
   useEffect(() => {
-    if (ticketId) {
+    if (ticketId && socket) {
       joinTicketRoom(ticketId);
     }
-  }, [ticketId, joinTicketRoom]);
+  }, [ticketId, joinTicketRoom, socket]);
 
   useEffect(() => {
     if (ticketId) {
@@ -237,6 +237,10 @@ export default function ChatWidget() {
       const endMsg: Message = { id: Date.now().toString(), sender: 'bot', text: 'Chat ended by user.' };
       sendAgentReply(ticketId, endMsg);
       resolveTicket(ticketId);
+      // Set resolved locally immediately — don't wait for the socket round-trip
+      // so the UI transitions even if the customer socket missed the ticket room
+      setMessages(prev => [...prev, endMsg]);
+      setIsResolved(true);
     }
   };
 
