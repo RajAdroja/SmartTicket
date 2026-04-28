@@ -2,8 +2,6 @@ import mongoose, { Schema, Document } from 'mongoose';
 import dotenv from 'dotenv';
 dotenv.config();
 
-// ── Interfaces ─────────────────────────────────────────────────────────────
-
 export interface Message {
   id: string;
   sender: 'bot' | 'user' | 'agent';
@@ -26,8 +24,6 @@ export interface Ticket {
     company: string;
   };
 }
-
-// ── Mongoose Schemas ────────────────────────────────────────────────────────
 
 const MessageSchema = new Schema<Message>({
   id: String,
@@ -69,20 +65,14 @@ const KbSchema = new Schema({
   }
 });
 
-// ── Mongoose Models ─────────────────────────────────────────────────────────
-
 export const TicketModel = mongoose.model('Ticket', TicketSchema);
 export const MetricsModel = mongoose.model('Metrics', MetricsSchema);
 export const KbModel = mongoose.model('Kb', KbSchema);
-
-// ── DB Connection ───────────────────────────────────────────────────────────
 
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MONGODB_URI not set in .env');
   await mongoose.connect(uri);
-  console.log('✅ Connected to MongoDB Atlas');
-  // Ensure singleton docs exist
   await MetricsModel.findOneAndUpdate(
     { _id: 'global' }, {}, { upsert: true, new: true }
   );
@@ -90,8 +80,6 @@ export async function connectDB() {
     { _id: 'global' }, {}, { upsert: true, new: true }
   );
 }
-
-// ── Ticket Helpers ──────────────────────────────────────────────────────────
 
 export const getActiveTickets = async (): Promise<Ticket[]> => {
   const docs = await TicketModel.find({ status: 'active' }).lean();
@@ -120,8 +108,6 @@ export const resolveTicket = async (ticketId: string): Promise<boolean> => {
   return result.modifiedCount > 0;
 };
 
-// ── Metrics Helpers ─────────────────────────────────────────────────────────
-
 export const getMetrics = async () => {
   const m = await MetricsModel.findById('global').lean();
   return m || { aiResolved: 0, escalated: 0, humanResolved: 0, totalCsatScore: 0, csatCount: 0 };
@@ -146,8 +132,6 @@ export const submitCsat = async (rating: number) => {
     { upsert: true }
   );
 };
-
-// ── Knowledge Base Helpers ──────────────────────────────────────────────────
 
 export const getKnowledgeBase = async (company: string = 'global'): Promise<string> => {
   const kb = await KbModel.findById(company).lean() as any;

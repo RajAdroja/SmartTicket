@@ -11,7 +11,6 @@ const API_URL = 'http://localhost:5001';
 export default function ChatWidget() {
   const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount } = useTickets();
   
-  // Initialize state from localStorage if available
   const loadInitialMessages = () => {
     const saved = localStorage.getItem('smartTicket_messages');
     if (saved) return JSON.parse(saved);
@@ -23,7 +22,7 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(() => localStorage.getItem('smartTicket_ticketId'));
-  const [customerCompany, setCustomerCompany] = useState('global');
+  const MOCK_CUSTOMER_COMPANY = 'Acme Corp';
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
   const [attachment, setAttachment] = useState<string | null>(null);
@@ -35,7 +34,6 @@ export default function ChatWidget() {
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Sync state to localStorage
   useEffect(() => {
     localStorage.setItem('smartTicket_messages', JSON.stringify(messages));
   }, [messages]);
@@ -56,21 +54,18 @@ export default function ChatWidget() {
     localStorage.setItem('smartTicket_isResolved', String(isResolved));
   }, [isResolved]);
 
-  // Re-join room on refresh if ticket exists
   useEffect(() => {
     if (ticketId) {
       joinTicketRoom(ticketId);
     }
   }, [ticketId, joinTicketRoom]);
 
-  // Sync with incoming WebSocket messages
   useEffect(() => {
     if (ticketId) {
       const activeTicket = tickets.find(t => t.id === ticketId);
       if (activeTicket) {
         if (activeTicket.status === 'resolved' && !isResolved) {
           setIsResolved(true);
-          // If the last message doesn't say "ended by user", we can assume it was ended by the agent.
           const lastMsg = activeTicket.messages[activeTicket.messages.length - 1];
           if (!lastMsg || !lastMsg.text.includes('Chat ended by user')) {
             setMessages([
@@ -83,7 +78,6 @@ export default function ChatWidget() {
           return;
         }
 
-        // Only update if there are new messages to avoid infinite loops
         if (activeTicket.messages.length > messages.length) {
           setMessages(activeTicket.messages);
         }
@@ -97,7 +91,6 @@ export default function ChatWidget() {
     }
   }, [messages, isTyping]);
 
-  // Track unread agent messages while widget is closed
   useEffect(() => {
     if (ticketId) {
       const activeTicket = tickets.find(t => t.id === ticketId);
@@ -154,7 +147,6 @@ export default function ChatWidget() {
       return;
     }
 
-    // AI Mode
     setMessages(newHistory);
     setInput('');
     setAttachment(null);
@@ -164,7 +156,7 @@ export default function ChatWidget() {
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newHistory, company: customerCompany })
+        body: JSON.stringify({ messages: newHistory, company: MOCK_CUSTOMER_COMPANY })
       });
       const data = await response.json();
       
@@ -186,18 +178,16 @@ export default function ChatWidget() {
         setMessages(finalHistory);
         
         joinTicketRoom(newId);
-        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: customerCompany });
+        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY });
       } else if (data.suggestResolution) {
         markAiResolved();
         localStorage.removeItem('smartTicket_messages');
         
-        // Wait 3 seconds so the user can read the final message before it resets
         setTimeout(() => {
           setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
         }, 3000);
       }
     } catch (error) {
-      console.error('Chat error:', error);
       setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: "I'm having trouble reaching the server right now." }]);
     } finally {
       setIsTyping(false);
@@ -217,10 +207,8 @@ export default function ChatWidget() {
     const finalHistory = [...messages, escalationMsg];
     setMessages(finalHistory);
     
-    // Join the socket room specifically for this ticket to get replies
     joinTicketRoom(newId);
     
-    // Escalate via Context (emits to server)
     escalateTicket(newId, 'Customer', finalHistory, { name: 'Customer', email: '', company: '' });
   };
 
@@ -263,7 +251,7 @@ export default function ChatWidget() {
 
   return (
     <>
-      {/* Zoomed Image Modal */}
+      {}
       {zoomedImage && (
         <div 
           className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
@@ -303,19 +291,7 @@ export default function ChatWidget() {
               </div>
               <div className="flex flex-col">
                 <CardTitle className="text-base font-semibold flex items-center gap-2">
-                  SmartTicket
-                  {!ticketId && (
-                    <select
-                      value={customerCompany}
-                      onChange={e => setCustomerCompany(e.target.value)}
-                      className="text-[10px] bg-white/20 text-white border-none rounded outline-none py-0.5 px-1 font-normal cursor-pointer"
-                    >
-                      <option className="text-black" value="global">Global User</option>
-                      <option className="text-black" value="Acme Corp">Acme Corp</option>
-                      <option className="text-black" value="Globex">Globex</option>
-                      <option className="text-black" value="Initech">Initech</option>
-                    </select>
-                  )}
+                  SmartTicket Support
                 </CardTitle>
                 <p className="text-xs text-indigo-200 flex items-center gap-1">
                   <span className={`w-1.5 h-1.5 rounded-full ${agentOnlineCount > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`}></span>

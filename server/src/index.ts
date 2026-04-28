@@ -14,7 +14,7 @@ import { generateChatResponse, generateSummary, generateSmartReplies, generateTa
 
 dotenv.config();
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB limit
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const app = express();
 app.use(cors());
@@ -25,9 +25,6 @@ const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
-// REST ENDPOINTS
-
-// 1. Chat endpoint for AI
 app.post('/api/chat', async (req, res) => {
   const { messages, company } = req.body;
   if (!messages || !Array.isArray(messages)) {
@@ -37,22 +34,18 @@ app.post('/api/chat', async (req, res) => {
   res.json({ reply, suggestEscalation, suggestResolution });
 });
 
-// 2. Fetch active queue for Agent Dashboard
 app.get('/api/tickets', async (req, res) => {
   res.json(await getActiveTickets());
 });
 
-// 3. Fetch all tickets (for history)
 app.get('/api/tickets/all', async (req, res) => {
   res.json(await getAllTickets());
 });
 
-// 4. Fetch metrics
 app.get('/api/metrics', async (req, res) => {
   res.json(await getMetrics());
 });
 
-// 5. Suggest Smart Replies
 app.post('/api/suggest-replies', async (req, res) => {
   const { ticketId } = req.body;
   const ticket = await TicketModel.findOne({ id: ticketId }).lean();
@@ -63,7 +56,6 @@ app.post('/api/suggest-replies', async (req, res) => {
   res.json({ suggestions });
 });
 
-// 6. Knowledge Base endpoints
 app.get('/api/kb', async (req, res) => {
   const company = req.query.company as string || 'global';
   res.json({ kb: await getKnowledgeBase(company) });
@@ -80,7 +72,6 @@ app.post('/api/kb', async (req, res) => {
   }
 });
 
-// 7. PDF upload → extract text → append to Knowledge Base
 app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
@@ -93,7 +84,6 @@ app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
 
     const targetCompany = req.body.company || 'global';
     
-    // Append to existing KB (or replace — your choice; here we append with a separator)
     const existing = await getKnowledgeBase(targetCompany);
     const separator = existing ? '\n\n---\n\n' : '';
     const updated = `${existing}${separator}${extractedText}`;
@@ -101,25 +91,20 @@ app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
 
     res.json({ success: true, pages: data.numpages, characters: extractedText.length, preview: extractedText.slice(0, 300) });
   } catch (err: any) {
-    console.error('PDF parse error:', err);
     res.status(500).json({ error: 'Failed to parse PDF', detail: err.message });
   }
 });
 
-// WEBSOCKET EVENTS
 let agentCount = 0;
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
 
   socket.on('agent_join', () => {
     socket.join('agents_room');
     agentCount++;
-    io.emit('agent_online_count', agentCount); // broadcast to everyone (including customers)
-    console.log(`Agent joined: ${socket.id} | Online agents: ${agentCount}`);
+    io.emit('agent_online_count', agentCount);
   });
 
-  // Customer escalates to human
   socket.on('escalate_ticket', async (data: { ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string } }) => {
     const { ticketId, customerName, chatHistory, userProfile } = data;
     socket.join(ticketId);
@@ -146,10 +131,8 @@ io.on('connection', (socket) => {
     const metrics = await getMetrics();
     io.to('agents_room').emit('new_ticket', newTicket);
     io.to('agents_room').emit('metrics_updated', metrics);
-    console.log(`Ticket escalated: ${ticketId}`);
   });
 
-  // Agent replies to a ticket
   socket.on('agent_reply', async (data: { ticketId: string, message: Message }) => {
     const { ticketId, message } = data;
     const added = await addMessageToTicket(ticketId, message);
@@ -159,13 +142,10 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Customer joins their specific ticket room
   socket.on('customer_join_ticket', (ticketId: string) => {
     socket.join(ticketId);
-    console.log(`Customer joined ticket room: ${ticketId}`);
   });
 
-  // Agent resolves ticket
   socket.on('resolve_ticket', async (ticketId: string) => {
     const resolved = await resolveTicket(ticketId);
     if (resolved) {
@@ -174,30 +154,24 @@ io.on('connection', (socket) => {
       io.to('agents_room').emit('ticket_resolved', ticketId);
       io.to('agents_room').emit('metrics_updated', metrics);
       io.to(ticketId).emit('ticket_resolved', ticketId);
-      console.log(`Ticket resolved: ${ticketId}`);
     }
   });
 
-  // AI resolves ticket
   socket.on('ai_resolved', async () => {
     await incrementAiResolved();
     const metrics = await getMetrics();
     io.to('agents_room').emit('metrics_updated', metrics);
-    console.log('Ticket AI resolved');
   });
 
-  // Typing Indicators
   socket.on('typing_status', (data: { ticketId: string, sender: 'user' | 'agent', isTyping: boolean }) => {
     io.to(data.ticketId).emit('typing_status', data);
     io.to('agents_room').emit('typing_status', data);
   });
 
-  // CSAT Surveys
   socket.on('submit_csat', async (data: { ticketId?: string, rating: number }) => {
     await submitCsat(data.rating);
     const metrics = await getMetrics();
     io.to('agents_room').emit('metrics_updated', metrics);
-    console.log(`CSAT received: ${data.rating}`);
   });
 
   socket.on('disconnect', () => {
@@ -205,21 +179,16 @@ io.on('connection', (socket) => {
     if (wasAgent) {
       agentCount = Math.max(0, agentCount - 1);
       io.emit('agent_online_count', agentCount);
-      console.log(`Agent disconnected: ${socket.id} | Online agents: ${agentCount}`);
     } else {
-      console.log(`User disconnected: ${socket.id}`);
     }
   });
 });
 
 const PORT = process.env.PORT || 5001;
 
-// Connect to MongoDB first, then start server
 connectDB().then(() => {
   server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
   });
 }).catch((err) => {
-  console.error('❌ Failed to connect to MongoDB:', err);
   process.exit(1);
 });

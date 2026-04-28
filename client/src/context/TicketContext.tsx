@@ -14,7 +14,7 @@ export interface Ticket {
   customerName: string;
   status: 'active' | 'resolved';
   messages: Message[];
-  escalatedAt: Date | string; // Date from JSON comes as string
+  escalatedAt: Date | string;
   summary?: string;
   tag?: string;
   userProfile?: {
@@ -63,18 +63,14 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
 
-    // Initial fetch of active tickets and metrics
     fetch(`${SOCKET_URL}/api/tickets`)
       .then(res => res.json())
       .then(data => setTickets(data))
-      .catch(console.error);
 
     fetch(`${SOCKET_URL}/api/metrics`)
       .then(res => res.json())
       .then(data => setMetrics(data))
-      .catch(console.error);
 
-    // Socket Event Listeners
     newSocket.on('new_ticket', (ticket: Ticket) => {
       setTickets(prev => [...prev, ticket]);
     });
@@ -82,7 +78,6 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     newSocket.on('ticket_updated', (data: { ticketId: string, message: Message }) => {
       setTickets(prev => prev.map(t => {
         if (t.id === data.ticketId) {
-          // ensure no duplicates
           if (t.messages.find(m => m.id === data.message.id)) return t;
           return { ...t, messages: [...t.messages, data.message] };
         }

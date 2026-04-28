@@ -28,8 +28,6 @@ Keep your responses short (1-3 sentences) and conversational.
 
 export async function generateChatResponse(history: Message[], company?: string): Promise<{ reply: string, suggestEscalation: boolean, suggestResolution: boolean }> {
   try {
-    // Format history for Gemini
-    // @google/genai expects contents as { role: 'user' | 'model', parts: [{ text: '' }] }
     const contents = history.map(msg => ({
       role: msg.sender === 'user' ? 'user' : 'model',
       parts: [{ text: msg.text }]
@@ -46,15 +44,12 @@ export async function generateChatResponse(history: Message[], company?: string)
 
     const reply = response.text || "I'm having trouble connecting to my knowledge base right now.";
     
-    // Simple regex check on the response to see if the AI decided to escalate
     const suggestEscalation = /escalat|human|agent/i.test(reply) && /human|agent|escalat/i.test(history[history.length - 1].text);
     
-    // Check if AI decided to close the chat
     const suggestResolution = /glad I could help|close this chat/i.test(reply);
 
     return { reply, suggestEscalation, suggestResolution };
   } catch (error) {
-    console.error('Error generating AI response:', error);
     return {
       reply: "I'm sorry, I'm experiencing technical difficulties. Would you like to speak to a human agent?",
       suggestEscalation: true,
@@ -81,7 +76,6 @@ export async function generateSummary(history: Message[]): Promise<string> {
 
     return response.text?.trim() || 'No summary available.';
   } catch (error) {
-    console.error('Error generating summary:', error);
     return 'Summary unavailable due to technical issues.';
   }
 }
@@ -103,7 +97,6 @@ export async function generateSmartReplies(history: Message[]): Promise<string[]
     });
 
     const text = response.text || '[]';
-    // Extract JSON array
     const match = text.match(/\[.*\]/s);
     if (match) {
       const parsed = JSON.parse(match[0]);
@@ -113,7 +106,6 @@ export async function generateSmartReplies(history: Message[]): Promise<string[]
     }
     return ['I am looking into this for you.', 'Could you provide more details?', 'Please give me a moment to check.'];
   } catch (error) {
-    console.error('Error generating smart replies:', error);
     return ['I am looking into this for you.', 'Could you provide more details?', 'Please give me a moment to check.'];
   }
 }
@@ -136,7 +128,6 @@ export async function generateTag(history: Message[]): Promise<string> {
 
     return response.text?.trim() || 'General';
   } catch (error) {
-    console.error('Error generating tag:', error);
     return 'General';
   }
 }

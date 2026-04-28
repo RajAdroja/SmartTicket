@@ -30,17 +30,15 @@ export default function AgentDashboard() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Persist sound preference
   useEffect(() => {
     localStorage.setItem('agent_sound', String(soundEnabled));
   }, [soundEnabled]);
 
-  // Play chime using Web Audio API
   const playChime = useCallback(() => {
     if (!soundEnabled) return;
     try {
       const ctx = new AudioContext();
-      const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
+      const frequencies = [523.25, 659.25, 783.99];
       frequencies.forEach((freq, i) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -54,10 +52,9 @@ export default function AgentDashboard() {
         osc.start(ctx.currentTime + i * 0.18);
         osc.stop(ctx.currentTime + i * 0.18 + 0.5);
       });
-    } catch (e) { /* Audio context not available */ }
+    } catch (e) {  }
   }, [soundEnabled]);
 
-  // Sound notification on new ticket
   const activeTickets = tickets.filter(t => t.status === 'active');
   useEffect(() => {
     if (activeTickets.length > prevTicketCountRef.current) {
@@ -72,7 +69,6 @@ export default function AgentDashboard() {
 
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
 
-  // Fetch smart replies when a ticket is selected or new message arrives
   useEffect(() => {
     if (selectedTicketId && selectedTicket) {
       const lastMsg = selectedTicket.messages[selectedTicket.messages.length - 1];
@@ -85,7 +81,6 @@ export default function AgentDashboard() {
         })
           .then(res => res.json())
           .then(data => setSmartReplies(data.suggestions || []))
-          .catch(console.error)
           .finally(() => setIsGeneratingReplies(false));
       } else {
         setSmartReplies([]);
@@ -100,7 +95,6 @@ export default function AgentDashboard() {
       fetch(`${API_URL}/api/kb?company=${encodeURIComponent(selectedKbCompany)}`)
         .then(res => res.json())
         .then(data => setKbText(data.kb || ''))
-        .catch(console.error);
     }
   }, [activeTab, selectedKbCompany]);
 
@@ -125,11 +119,10 @@ export default function AgentDashboard() {
       const res = await fetch(`${API_URL}/api/kb/upload`, { method: 'POST', body: formData });
       const data = await res.json();
       if (res.ok) {
-        // Refresh the KB text area with the latest content from server
         const kbRes = await fetch(`${API_URL}/api/kb?company=${encodeURIComponent(selectedKbCompany)}`);
         const kbData = await kbRes.json();
         setKbText(kbData.kb);
-        setPdfStatus({ type: 'success', message: `✓ "${file.name}" processed — ${data.pages} page(s), ${data.characters.toLocaleString()} characters extracted` });
+        setPdfStatus({ type: 'success', message: `Successfully processed "${file.name}" — ${data.pages} page(s), ${data.characters.toLocaleString()} characters extracted` });
       } else {
         setPdfStatus({ type: 'error', message: data.error || 'Upload failed' });
       }
@@ -139,7 +132,6 @@ export default function AgentDashboard() {
       setIsPdfUploading(false);
     }
   };
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setReply(e.target.value);
@@ -189,7 +181,7 @@ export default function AgentDashboard() {
 
   return (
     <>
-      {/* Zoomed Image Modal */}
+      {}
       {zoomedImage && (
         <div 
           className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4 cursor-zoom-out animate-in fade-in duration-200"
@@ -251,7 +243,7 @@ export default function AgentDashboard() {
       </header>
 
       <main className="flex-1 flex overflow-hidden">
-        {/* Sidebar: Queue */}
+        {}
         <div className="w-80 bg-white border-r border-zinc-200 flex flex-col">
           <div className="p-4 border-b border-zinc-200 bg-zinc-50 flex justify-between items-center">
             <h2 className="font-semibold text-zinc-700 text-sm uppercase tracking-wider">Live Queue</h2>
@@ -291,7 +283,7 @@ export default function AgentDashboard() {
           </div>
         </div>
 
-        {/* Main Window */}
+        {}
         <div className="flex-1 flex flex-col bg-zinc-50 overflow-y-auto">
           {activeTab === 'analytics' ? (
             <div className="p-8 max-w-5xl mx-auto w-full animate-in fade-in">
@@ -383,7 +375,7 @@ export default function AgentDashboard() {
                 </div>
               </div>
 
-              {/* PDF Upload Zone */}
+              {}
               <div
                 onDragOver={e => { e.preventDefault(); setIsDraggingPdf(true); }}
                 onDragLeave={() => setIsDraggingPdf(false)}
@@ -420,7 +412,7 @@ export default function AgentDashboard() {
                 )}
               </div>
 
-              {/* Status message */}
+              {}
               {pdfStatus && (
                 <div className={`text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium ${
                   pdfStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
@@ -431,7 +423,7 @@ export default function AgentDashboard() {
                 </div>
               )}
 
-              {/* Manual text area */}
+              {}
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Knowledge Base Content</p>
@@ -459,7 +451,7 @@ export default function AgentDashboard() {
           ) : (
             <div className="flex-1 flex overflow-hidden">
               <div className="flex-1 flex flex-col min-w-0">
-                {/* Ticket Header & Summary */}
+                {}
                 <div className="flex flex-col shrink-0 bg-white border-b border-zinc-200">
                   <div className="h-16 px-6 flex items-center justify-between">
                   <div>
@@ -490,7 +482,7 @@ export default function AgentDashboard() {
                 )}
               </div>
 
-              {/* Chat History */}
+              {}
               <div className="flex-1 p-6 overflow-y-auto" ref={scrollRef}>
                 <div className="max-w-3xl mx-auto space-y-6 pb-4">
                   {selectedTicket.messages.map((msg, idx) => {
@@ -542,7 +534,7 @@ export default function AgentDashboard() {
                 </div>
               </div>
 
-              {/* Reply Box & Smart Replies */}
+              {}
               {selectedTicket.status === 'active' ? (
                 <div className="p-4 bg-white border-t border-zinc-200 flex flex-col gap-3">
                   {isGeneratingReplies ? (
@@ -625,7 +617,7 @@ export default function AgentDashboard() {
               )}
               </div>
 
-              {/* User Profile Sidebar */}
+              {}
               {selectedTicket.userProfile && (
                 <div className="w-72 bg-white border-l border-zinc-200 flex flex-col shrink-0 overflow-y-auto hidden lg:flex">
                   <div className="p-6 border-b border-zinc-100 flex flex-col items-center text-center">
