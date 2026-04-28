@@ -26,10 +26,9 @@ export default function Header() {
         <Stack
           direction="row"
           spacing={1.5}
-          alignItems="center"
           component={NavLink}
           to="/"
-          sx={{ color: 'inherit', textDecoration: 'none' }}
+          sx={{ alignItems: 'center', color: 'inherit', textDecoration: 'none' }}
         >
           <Box
             component="img"
@@ -42,12 +41,12 @@ export default function Header() {
               objectFit: 'contain',
             }}
           />
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
             AcmeCorp Dashboard
           </Typography>
         </Stack>
 
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
           <Tabs
             value={activeTab}
             textColor="primary"

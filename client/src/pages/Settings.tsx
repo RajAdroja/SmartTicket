@@ -132,7 +132,7 @@ export default function Settings() {
               </FormControl>
             </Paper>
 
-            <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
+            <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
               {saveState === 'saved' && <Alert severity="success">Settings saved</Alert>}
               <Button type="submit" variant="contained">
                 Save changes

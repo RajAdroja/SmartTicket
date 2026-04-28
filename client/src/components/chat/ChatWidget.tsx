@@ -336,7 +336,7 @@ export default function ChatWidget() {
                 gap: 1,
               }}
             >
-              <Stack direction="row" spacing={1.25} alignItems="center">
+              <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
                 <Box
                   sx={{
                     width: 32,
@@ -350,7 +350,7 @@ export default function ChatWidget() {
                   <Bot size={20} />
                 </Box>
                 <Box>
-                  <Typography variant="subtitle2" fontWeight={700}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
                     SmartTicket Support
                   </Typography>
                   <Typography variant="caption" sx={{ opacity: 0.9 }}>
@@ -423,7 +423,7 @@ export default function ChatWidget() {
                   ))}
 
                   {visibleMessages.length <= 1 && !isResolved && (
-                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                       {['Billing question', 'Order update', 'Talk to support'].map((prompt) => (
                         <Chip key={prompt} label={prompt} size="small" onClick={() => setInput(prompt)} />
                       ))}
@@ -461,7 +461,7 @@ export default function ChatWidget() {
                       </Stack>
                     </Box>
                   ) : (
-                    <Typography variant="body2" color="success.main" textAlign="center" fontWeight={600}>
+                    <Typography variant="body2" color="success.main" sx={{ textAlign: 'center', fontWeight: 600 }}>
                       Thank you for your feedback!
                     </Typography>
                   )}
