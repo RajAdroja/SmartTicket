@@ -24,6 +24,7 @@ export default function AgentDashboard() {
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'pending' | 'on-hold' | 'resolved'>('all');
+  const [ticketCategoryFilter, setTicketCategoryFilter] = useState<string>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [selectedKbCompany, setSelectedKbCompany] = useState('global');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
@@ -58,6 +59,7 @@ export default function AgentDashboard() {
   }, [soundEnabled]);
 
   const activeTickets = tickets.filter(t => t.status !== 'resolved');
+  const uniqueCategories = Array.from(new Set(tickets.map(t => t.tag).filter(Boolean)));
   useEffect(() => {
     if (activeTickets.length > prevTicketCountRef.current) {
       playChime();
@@ -103,6 +105,10 @@ export default function AgentDashboard() {
   const filteredTickets = [...tickets].reverse().filter(ticket => {
     const normalized = normalizeStatus(ticket.status);
     if (ticketStatusFilter !== 'all' && normalized !== ticketStatusFilter) {
+      return false;
+    }
+
+    if (ticketCategoryFilter !== 'all' && ticket.tag !== ticketCategoryFilter) {
       return false;
     }
 
@@ -307,12 +313,24 @@ export default function AgentDashboard() {
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
             <div className="space-y-3 mb-3">
-              <Input
-                value={ticketSearch}
-                onChange={e => setTicketSearch(e.target.value)}
-                placeholder="Search tickets..."
-                className="w-full text-sm"
-              />
+              <div className="flex gap-2">
+                <Input
+                  value={ticketSearch}
+                  onChange={e => setTicketSearch(e.target.value)}
+                  placeholder="Search tickets..."
+                  className="flex-1 text-sm"
+                />
+                <select
+                  value={ticketCategoryFilter}
+                  onChange={e => setTicketCategoryFilter(e.target.value)}
+                  className="w-[110px] text-xs border border-slate-200 rounded-md bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Categories</option>
+                  {uniqueCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-5 gap-2">
                 {['all', 'open', 'pending', 'on-hold', 'resolved'].map((status) => (
                   <button
