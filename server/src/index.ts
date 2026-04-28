@@ -7,7 +7,7 @@ import multer from 'multer';
 import pdfParse from 'pdf-parse';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
-  Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
+  updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
@@ -117,7 +117,7 @@ io.on('connection', (socket) => {
     const newTicket = {
       id: ticketId,
       customerName,
-      status: 'active' as const,
+      status: 'open' as const,
       messages: chatHistory,
       escalatedAt: new Date(),
       summary,
@@ -154,6 +154,14 @@ io.on('connection', (socket) => {
       io.to('agents_room').emit('ticket_resolved', ticketId);
       io.to('agents_room').emit('metrics_updated', metrics);
       io.to(ticketId).emit('ticket_resolved', ticketId);
+    }
+  });
+
+  socket.on('update_ticket_status', async (data: { ticketId: string, status: 'open' | 'pending' | 'on-hold' | 'resolved' | 'active' }) => {
+    const updated = await updateTicketStatus(data.ticketId, data.status);
+    if (updated) {
+      io.to(data.ticketId).emit('ticket_status_updated', data);
+      io.to('agents_room').emit('ticket_status_updated', data);
     }
   });
 

@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 const API_URL = 'http://localhost:5001';
 
 export default function AgentDashboard() {
-  const { tickets, sendAgentReply, resolveTicket, joinAgentRoom, metrics, typingIndicators, sendTypingStatus } = useTickets();
+  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [reply, setReply] = useState('');
   const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge'>('queue');
@@ -23,6 +23,7 @@ export default function AgentDashboard() {
   const [pdfStatus, setPdfStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
   const [ticketSearch, setTicketSearch] = useState('');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'pending' | 'on-hold' | 'resolved'>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [selectedKbCompany, setSelectedKbCompany] = useState('global');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
@@ -56,7 +57,7 @@ export default function AgentDashboard() {
     } catch (e) {  }
   }, [soundEnabled]);
 
-  const activeTickets = tickets.filter(t => t.status === 'active');
+  const activeTickets = tickets.filter(t => t.status !== 'resolved');
   useEffect(() => {
     if (activeTickets.length > prevTicketCountRef.current) {
       playChime();
@@ -69,7 +70,42 @@ export default function AgentDashboard() {
   }, [joinAgentRoom]);
 
   const selectedTicket = tickets.find(t => t.id === selectedTicketId);
+  const normalizeStatus = (status: Ticket['status']): 'open' | 'pending' | 'on-hold' | 'resolved' => {
+    if (status === 'active') return 'open';
+    return status;
+  };
+
+  const statusLabel = (status: Ticket['status']) => {
+    const normalized = normalizeStatus(status);
+    switch (normalized) {
+      case 'open': return 'Open';
+      case 'pending': return 'Pending';
+      case 'on-hold': return 'On Hold';
+      case 'resolved': return 'Resolved';
+    }
+  };
+
+  const statusBadgeClass = (status: Ticket['status']) => {
+    switch (normalizeStatus(status)) {
+      case 'open':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/70';
+      case 'pending':
+        return 'bg-amber-50 text-amber-700 border-amber-200/70';
+      case 'on-hold':
+        return 'bg-slate-100 text-slate-600 border-slate-200';
+      case 'resolved':
+        return 'bg-slate-100 text-slate-500 border-slate-200';
+      default:
+        return 'bg-slate-100 text-slate-500 border-slate-200';
+    }
+  };
+
   const filteredTickets = [...tickets].reverse().filter(ticket => {
+    const normalized = normalizeStatus(ticket.status);
+    if (ticketStatusFilter !== 'all' && normalized !== ticketStatusFilter) {
+      return false;
+    }
+
     const searchText = ticketSearch.trim().toLowerCase();
     if (!searchText) return true;
     return [
@@ -270,13 +306,25 @@ export default function AgentDashboard() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
-            <div className="mb-3">
+            <div className="space-y-3 mb-3">
               <Input
                 value={ticketSearch}
                 onChange={e => setTicketSearch(e.target.value)}
                 placeholder="Search tickets..."
                 className="w-full text-sm"
               />
+              <div className="grid grid-cols-5 gap-2">
+                {['all', 'open', 'pending', 'on-hold', 'resolved'].map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setTicketStatusFilter(status as 'all' | 'open' | 'pending' | 'on-hold' | 'resolved')}
+                    className={`text-xs font-semibold rounded-xl py-2 transition-all ${ticketStatusFilter === status ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'}`}
+                  >
+                    {status === 'all' ? 'All' : status === 'on-hold' ? 'On Hold' : status.charAt(0).toUpperCase() + status.slice(1)}
+                  </button>
+                ))}
+              </div>
             </div>
             {tickets.length === 0 ? (
               <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
@@ -316,11 +364,9 @@ export default function AgentDashboard() {
                           {ticket.customerName}
                         </span>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {isResolved ? (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-slate-100 text-slate-500 border-0">Closed</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-[9px] py-0 h-4 bg-emerald-50 text-emerald-700 border border-emerald-200/50">Open</Badge>
-                          )}
+                          <Badge variant="secondary" className={`text-[9px] py-0 h-4 border ${statusBadgeClass(ticket.status)}`}>
+                            {statusLabel(ticket.status)}
+                          </Badge>
                           {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
                         </div>
                       </div>
@@ -516,13 +562,31 @@ export default function AgentDashboard() {
                       </div>
                       {selectedTicket.customerName}
                       {selectedTicket.tag && <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">{selectedTicket.tag}</Badge>}
+                      <Badge variant="secondary" className={`text-[11px] py-1 h-6 rounded-full ${statusBadgeClass(selectedTicket.status)} ml-2`}>{statusLabel(selectedTicket.status)}</Badge>
                     </h2>
                   </div>
-                  {selectedTicket.status === 'active' && (
-                    <Button variant="outline" onClick={handleResolve} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 transition-colors font-semibold rounded-lg shadow-sm">
-                      <CheckCircle2 size={16} /> Mark as Resolved
-                    </Button>
-                  )}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {normalizeStatus(selectedTicket.status) !== 'resolved' && (
+                      <>
+                        <Button variant="outline" onClick={handleResolve} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 transition-colors font-semibold rounded-lg shadow-sm">
+                          <CheckCircle2 size={16} /> Mark as Resolved
+                        </Button>
+                        {(['open', 'pending', 'on-hold'] as const).map(statusOption => {
+                          if (normalizeStatus(selectedTicket.status) === statusOption) return null;
+                          return (
+                            <Button
+                              key={statusOption}
+                              variant="outline"
+                              onClick={() => updateTicketStatus(selectedTicket.id, statusOption)}
+                              className="text-xs py-2 px-3 rounded-full border-slate-200 text-slate-600 hover:bg-slate-100"
+                            >
+                              Set {statusOption === 'on-hold' ? 'On Hold' : statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
+                            </Button>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
                 </div>
                 {selectedTicket.summary && (
                   <div className="px-8 pb-4 pt-0">
@@ -578,7 +642,7 @@ export default function AgentDashboard() {
                       </div>
                     );
                   })}
-                  {selectedTicketId && typingIndicators[selectedTicketId]?.user && selectedTicket.status === 'active' && (
+                  {selectedTicketId && typingIndicators[selectedTicketId]?.user && normalizeStatus(selectedTicket.status) !== 'resolved' && (
                     <div className="flex justify-start">
                       <div className="bg-white border border-zinc-200 p-3 rounded-2xl rounded-tl-sm shadow-sm flex items-center gap-2">
                         <div className="flex gap-1">
@@ -594,7 +658,7 @@ export default function AgentDashboard() {
               </div>
 
               {}
-              {selectedTicket.status === 'active' ? (
+              {normalizeStatus(selectedTicket.status) !== 'resolved' ? (
                 <div className="p-6 bg-white border-t border-slate-200 flex flex-col gap-4 relative z-20 shadow-[0_-4px_24px_rgba(0,0,0,0.02)]">
                   {isGeneratingReplies ? (
                     <div className="flex items-center gap-2 text-xs text-blue-600 font-medium px-2 animate-pulse">

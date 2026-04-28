@@ -13,7 +13,7 @@ export interface Message {
 export interface Ticket {
   id: string;
   customerName: string;
-  status: 'active' | 'resolved';
+  status: 'open' | 'pending' | 'on-hold' | 'resolved' | 'active';
   messages: Message[];
   escalatedAt: Date;
   summary?: string;
@@ -36,7 +36,7 @@ const MessageSchema = new Schema<Message>({
 const TicketSchema = new Schema<Ticket>({
   id: { type: String, required: true, unique: true },
   customerName: String,
-  status: { type: String, enum: ['active', 'resolved'], default: 'active' },
+  status: { type: String, enum: ['open', 'pending', 'on-hold', 'resolved', 'active'], default: 'open' },
   messages: [MessageSchema],
   escalatedAt: { type: Date, default: Date.now },
   summary: String,
@@ -82,7 +82,7 @@ export async function connectDB() {
 }
 
 export const getActiveTickets = async (): Promise<Ticket[]> => {
-  const docs = await TicketModel.find({ status: 'active' }).lean();
+  const docs = await TicketModel.find({ status: { $ne: 'resolved' } }).lean();
   return docs as unknown as Ticket[];
 };
 
@@ -105,6 +105,11 @@ export const addMessageToTicket = async (ticketId: string, message: Message): Pr
 
 export const resolveTicket = async (ticketId: string): Promise<boolean> => {
   const result = await TicketModel.updateOne({ id: ticketId }, { status: 'resolved' });
+  return result.modifiedCount > 0;
+};
+
+export const updateTicketStatus = async (ticketId: string, status: Ticket['status']): Promise<boolean> => {
+  const result = await TicketModel.updateOne({ id: ticketId }, { status });
   return result.modifiedCount > 0;
 };
 

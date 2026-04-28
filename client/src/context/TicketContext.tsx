@@ -12,7 +12,7 @@ export interface Message {
 export interface Ticket {
   id: string;
   customerName: string;
-  status: 'active' | 'resolved';
+  status: 'open' | 'pending' | 'on-hold' | 'resolved' | 'active';
   messages: Message[];
   escalatedAt: Date | string;
   summary?: string;
@@ -44,6 +44,7 @@ interface TicketContextType {
   markAiResolved: () => void;
   typingIndicators: Record<string, { user: boolean; agent: boolean }>;
   sendTypingStatus: (ticketId: string, isTyping: boolean, sender: 'user' | 'agent') => void;
+  updateTicketStatus: (ticketId: string, status: Ticket['status']) => void;
   submitCsat: (rating: number, ticketId?: string) => void;
   agentOnlineCount: number;
 }
@@ -87,6 +88,10 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
     newSocket.on('ticket_resolved', (ticketId: string) => {
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'resolved' } : t));
+    });
+
+    newSocket.on('ticket_status_updated', (data: { ticketId: string, status: Ticket['status'] }) => {
+      setTickets(prev => prev.map(t => t.id === data.ticketId ? { ...t, status: data.status } : t));
     });
 
     newSocket.on('metrics_updated', (data: Metrics) => {
@@ -141,6 +146,13 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [socket]);
 
+  const updateTicketStatus = useCallback((ticketId: string, status: Ticket['status']) => {
+    if (socket) {
+      socket.emit('update_ticket_status', { ticketId, status });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t));
+    }
+  }, [socket]);
+
   const joinTicketRoom = useCallback((ticketId: string) => {
     if (socket) {
       socket.emit('customer_join_ticket', ticketId);
@@ -173,7 +185,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <TicketContext.Provider value={{ 
-      tickets, socket, escalateTicket, sendAgentReply, resolveTicket, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
+      tickets, socket, escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
       typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount
     }}>
       {children}
