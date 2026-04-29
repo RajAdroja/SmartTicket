@@ -75,6 +75,11 @@ function resolveCompany(company?: string, companyToken?: string): string | undef
   return company; // no token → pass company name through (agent/direct use)
 }
 
+function findAgentNameById(agentId: string): string | null {
+  const agent = Array.from(onlineAgents.values()).find((a) => a.agentId === agentId);
+  return agent?.name ?? null;
+}
+
 const ChatRequestSchema = z.object({
   messages: z.array(ChatMessageInputSchema).min(1),
   company: z.string().optional(),
@@ -381,6 +386,8 @@ io.on('connection', (socket) => {
   socket.on('transfer_ticket', async (data: { ticketId: string; toAgentId: string; note?: string; fromAgentName?: string }) => {
     const { ticketId, toAgentId, note, fromAgentName } = data;
 
+    const toAgentName = findAgentNameById(toAgentId) || 'Agent';
+
     // Add a system message to the ticket thread so the history shows the transfer
     const transferMsg: Message = {
       id: `transfer-${Date.now()}`,
@@ -389,19 +396,55 @@ io.on('connection', (socket) => {
       isInternal: true,
     };
     await addMessageToTicket(ticketId, transferMsg);
+    await TicketModel.updateOne({ id: ticketId }, { assignedAgentId: toAgentId, assignedAgentName: toAgentName });
 
     // Notify all agents — the target agent will highlight it
     io.to('agents_room').emit('ticket_transferred', {
       ticketId,
       toAgentId,
+      toAgentName,
       fromAgentName: fromAgentName || 'An agent',
       note: note || '',
       message: transferMsg,
     });
 
+    const ticket = await TicketModel.findOne({ id: ticketId }).lean();
+    if (ticket) {
+      io.to('agents_room').emit('ticket_assigned', { ticket });
+      io.to(ticketId).emit('ticket_assigned', { ticket });
+    }
+
     // Also push the message update so the thread stays in sync
     io.to('agents_room').emit('ticket_updated', { ticketId, message: transferMsg });
     io.to(ticketId).emit('ticket_updated', { ticketId, message: transferMsg });
+  });
+
+  socket.on('assign_ticket', async (data: { ticketId: string; agentId: string; agentName: string }) => {
+    const parsed = z.object({
+      ticketId: z.string().min(1),
+      agentId: z.string().min(1),
+      agentName: z.string().min(1),
+    }).safeParse(data);
+
+    if (!parsed.success) {
+      socket.emit('ticket_error', { error: 'Invalid assign payload' });
+      return;
+    }
+
+    const { ticketId, agentId, agentName } = parsed.data;
+    const updated = await TicketModel.findOneAndUpdate(
+      { id: ticketId },
+      { assignedAgentId: agentId, assignedAgentName: agentName },
+      { new: true }
+    ).lean();
+
+    if (!updated) {
+      socket.emit('ticket_error', { error: 'Ticket not found' });
+      return;
+    }
+
+    io.to('agents_room').emit('ticket_assigned', { ticket: updated });
+    io.to(ticketId).emit('ticket_assigned', { ticket: updated });
   });
 
   socket.on('escalate_ticket', async (data: {

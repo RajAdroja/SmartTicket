@@ -86,7 +86,7 @@ function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
 }
 
 export default function AgentDashboard() {
-  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus } = useTickets();
+  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, agentName, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus, assignTicket } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [reply, setReply] = useState('');
@@ -833,6 +833,15 @@ export default function AgentDashboard() {
                               {escalationReasonLabel(ticket.escalationReason)}
                             </Badge>
                           )}
+                          {ticket.assignedAgentName ? (
+                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-600 bg-slate-50 border-slate-200">
+                              Assigned to {ticket.assignedAgentName}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-slate-100 border-slate-200">
+                              Unassigned
+                            </Badge>
+                          )}
                           {/* SLA timer — only on active tickets */}
                           {!isResolved && <SlaTimer escalatedAt={ticket.escalatedAt} />}
                         </div>
@@ -1276,6 +1285,20 @@ export default function AgentDashboard() {
                         </Badge>
                       )}
                     </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="text-sm text-slate-500">
+                        Assigned to {selectedTicket.assignedAgentName ?? 'no one yet'}
+                      </span>
+                      {!selectedTicket.assignedAgentName && normalizeStatus(selectedTicket.status) !== 'resolved' && (
+                        <Button
+                          variant="secondary"
+                          onClick={() => assignTicket(selectedTicket.id, agentId, agentName)}
+                          className="text-xs font-semibold px-3 py-1 rounded-lg"
+                        >
+                          Claim ticket
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {normalizeStatus(selectedTicket.status) !== 'resolved' && (

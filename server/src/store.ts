@@ -25,6 +25,8 @@ export interface Ticket {
     email: string;
     company: string;
   };
+  assignedAgentId?: string;
+  assignedAgentName?: string;
   lastAiConfidenceScore?: number;
   lastAiConfidenceLabel?: ConfidenceLabel;
   escalationReason?: EscalationReason;
@@ -53,6 +55,8 @@ const TicketSchema = new Schema<Ticket>({
     email: String,
     company: String
   },
+  assignedAgentId: { type: String, default: null },
+  assignedAgentName: { type: String, default: null },
   lastAiConfidenceScore: { type: Number, default: null },
   lastAiConfidenceLabel: { type: String, enum: ['high', 'medium', 'low'], default: null },
   escalationReason: {

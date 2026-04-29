@@ -26,6 +26,8 @@ export interface Ticket {
   lastAiConfidenceScore?: number;
   lastAiConfidenceLabel?: 'high' | 'medium' | 'low';
   escalationReason?: 'none' | 'missing_kb_info' | 'sensitive_account_action' | 'user_requested_human' | 'frustration_detected' | 'low_confidence';
+  assignedAgentId?: string;
+  assignedAgentName?: string;
   escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
 }
 
@@ -60,6 +62,7 @@ interface TicketContextType {
   tickets: Ticket[];
   socket: Socket | null;
   agentId: string;
+  agentName: string;
   agentStatus: 'available' | 'busy' | 'away';
   setAgentStatus: (status: 'available' | 'busy' | 'away') => void;
   onlineAgents: OnlineAgent[];
@@ -78,6 +81,7 @@ interface TicketContextType {
   submitCsat: (rating: number, ticketId?: string) => void;
   agentOnlineCount: number;
   transferTicket: (ticketId: string, toAgentId: string, note: string) => void;
+  assignTicket: (ticketId: string, agentId: string, agentName: string) => void;
 }
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
@@ -157,10 +161,14 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
       setOnlineAgents(agents);
     });
 
-    newSocket.on('ticket_transferred', (data: { ticketId: string; toAgentId: string; fromAgentName: string; note: string }) => {
+    newSocket.on('ticket_transferred', (data: { ticketId: string; toAgentId: string; toAgentName?: string; fromAgentName: string; note: string }) => {
       if (data.toAgentId === agentId) {
         setTransferNotification({ ticketId: data.ticketId, fromAgentName: data.fromAgentName, note: data.note });
       }
+    });
+
+    newSocket.on('ticket_assigned', (data: { ticket: Ticket }) => {
+      setTickets(prev => prev.map(t => t.id === data.ticket.id ? { ...t, ...data.ticket } : t));
     });
 
     return () => {
@@ -247,6 +255,13 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [socket]);
 
+  const assignTicket = useCallback((ticketId: string, agentId: string, agentName: string) => {
+    if (socket) {
+      socket.emit('assign_ticket', { ticketId, agentId, agentName });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, assignedAgentId: agentId, assignedAgentName: agentName } : t));
+    }
+  }, [socket]);
+
   const transferTicket = useCallback((ticketId: string, toAgentId: string, note: string) => {
     if (socket) {
       socket.emit('transfer_ticket', { ticketId, toAgentId, note, fromAgentName: AGENT_NAME });
@@ -266,9 +281,9 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <TicketContext.Provider value={{ 
-      tickets, socket, agentId, agentStatus, setAgentStatus, onlineAgents, transferNotification, clearTransferNotification,
+      tickets, socket, agentId, agentName: AGENT_NAME, agentStatus, setAgentStatus, onlineAgents, transferNotification, clearTransferNotification,
       escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
-      typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount, transferTicket
+      typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount, transferTicket, assignTicket
     }}>
       {children}
     </TicketContext.Provider>
