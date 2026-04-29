@@ -180,15 +180,20 @@ export default function AgentDashboard() {
     if (selectedTicketId && selectedTicket) {
       const lastMsg = selectedTicket.messages[selectedTicket.messages.length - 1];
       if (lastMsg?.sender === 'user') {
+        const controller = new AbortController();
         setIsGeneratingReplies(true);
+        setSmartReplies([]);
         fetch(`${API_URL}/api/suggest-replies`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ticketId: selectedTicketId })
+          body: JSON.stringify({ ticketId: selectedTicketId }),
+          signal: controller.signal,
         })
           .then(res => res.json())
           .then(data => setSmartReplies(data.suggestions || []))
+          .catch(err => { if (err.name !== 'AbortError') setSmartReplies([]); })
           .finally(() => setIsGeneratingReplies(false));
+        return () => controller.abort();
       } else {
         setSmartReplies([]);
       }
