@@ -43,6 +43,8 @@ export default function ChatWidget() {
   const MOCK_CUSTOMER_COMPANY = 'Acme Corp';
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [selectedRating, setSelectedRating] = useState(0);
   const [attachment, setAttachment] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -271,6 +273,7 @@ export default function ChatWidget() {
 
   const handleCsatSubmit = (rating: number) => {
     submitCsat(rating, ticketId || undefined);
+    setSelectedRating(rating);
     setHasSubmittedCsat(true);
   };
 
@@ -499,22 +502,58 @@ export default function ChatWidget() {
               {isResolved ? (
                 <Stack spacing={1.5}>
                   {!hasSubmittedCsat ? (
-                    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, p: 1.5 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        How was your experience?
-                      </Typography>
-                      <Stack direction="row" spacing={0.5} sx={{ mt: 1, justifyContent: 'center' }}>
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <IconButton key={star} onClick={() => handleCsatSubmit(star)} size="small" color="warning">
-                            <Star size={20} />
-                          </IconButton>
-                        ))}
+                    <Box sx={(theme) => ({ border: `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2, background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' })}>
+                      <Stack alignItems="center" spacing={1.5}>
+                        <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.35)' }}>
+                          <Star size={22} color="#fff" fill="#fff" />
+                        </Box>
+                        <Box sx={{ textAlign: 'center' }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: '#92400e' }}>
+                            How was your experience?
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#b45309' }}>
+                            Your feedback helps us improve
+                          </Typography>
+                        </Box>
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <IconButton
+                              key={star}
+                              size="small"
+                              onMouseEnter={() => setHoveredStar(star)}
+                              onMouseLeave={() => setHoveredStar(0)}
+                              onClick={() => handleCsatSubmit(star)}
+                              sx={{ transition: 'transform 0.15s', transform: hoveredStar >= star ? 'scale(1.25)' : 'scale(1)', p: 0.5 }}
+                            >
+                              <Star
+                                size={28}
+                                color="#f59e0b"
+                                fill={hoveredStar >= star ? '#f59e0b' : 'none'}
+                                strokeWidth={1.5}
+                              />
+                            </IconButton>
+                          ))}
+                        </Stack>
+                        <Stack direction="row" justifyContent="space-between" sx={{ width: '100%', px: 1 }}>
+                          <Typography variant="caption" sx={{ color: '#b45309', fontSize: '0.6rem' }}>Terrible</Typography>
+                          <Typography variant="caption" sx={{ color: '#b45309', fontSize: '0.6rem' }}>Excellent</Typography>
+                        </Stack>
                       </Stack>
                     </Box>
                   ) : (
-                    <Typography variant="body2" color="success.main" sx={{ textAlign: 'center', fontWeight: 600 }}>
-                      Thank you for your feedback!
-                    </Typography>
+                    <Box sx={{ textAlign: 'center', py: 1 }}>
+                      <Stack direction="row" justifyContent="center" spacing={0.25} sx={{ mb: 0.75 }}>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star key={star} size={18} color="#f59e0b" fill={star <= selectedRating ? '#f59e0b' : 'none'} strokeWidth={1.5} />
+                        ))}
+                      </Stack>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.dark' }}>
+                        Thanks for your feedback!
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Your rating has been submitted.
+                      </Typography>
+                    </Box>
                   )}
                   <Stack direction="row" spacing={1}>
                     <Button variant="outlined" fullWidth onClick={handleStartNewChat}>
