@@ -126,6 +126,10 @@ export default function AgentDashboard() {
   const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateCategory, setTemplateCategory] = useState('all');
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
+  const [templateTitle, setTemplateTitle] = useState('');
+  const [templateCategoryInput, setTemplateCategoryInput] = useState('General');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Brief skeleton on ticket switch
   useEffect(() => {
@@ -485,6 +489,40 @@ export default function AgentDashboard() {
     setShowTemplates(false);
     // Increment usage count
     fetch(`${API_URL}/api/canned-responses/${template._id}/use`, { method: 'POST' }).catch(() => {});
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!templateTitle.trim() || !reply.trim()) return;
+    
+    setIsSavingTemplate(true);
+    try {
+      const res = await fetch(`${API_URL}/api/canned-responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId,
+          title: templateTitle.trim(),
+          content: reply.trim(),
+          category: templateCategoryInput || 'General',
+        }),
+      });
+      
+      if (res.ok) {
+        // Refresh templates list
+        const templatesRes = await fetch(`${API_URL}/api/canned-responses?agentId=${agentId}`);
+        const templates = await templatesRes.json();
+        setCannedResponses(templates);
+        
+        // Reset modal
+        setShowSaveTemplateModal(false);
+        setTemplateTitle('');
+        setTemplateCategoryInput('General');
+      }
+    } catch (err) {
+      console.error('Failed to save template:', err);
+    } finally {
+      setIsSavingTemplate(false);
+    }
   };
 
   return (
@@ -1576,6 +1614,17 @@ export default function AgentDashboard() {
                         <FileText size={16} className={showTemplates ? "" : "opacity-50"} />
                         Templates
                       </button>
+                      {reply.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => setShowSaveTemplateModal(true)}
+                          className="flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold text-emerald-700 hover:bg-emerald-50 transition-all"
+                          title="Save this reply as a template"
+                        >
+                          <Save size={16} />
+                          Save
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setIsInternal(!isInternal)}
@@ -1603,18 +1652,18 @@ export default function AgentDashboard() {
                   {/* Templates Panel */}
                   {showTemplates && (
                     <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-96 overflow-hidden flex flex-col">
-                      <div className="p-3 border-b border-slate-200 bg-slate-50 flex flex-col gap-2">
+                      <div className="p-3 border-b border-slate-200 bg-white flex flex-col gap-2">
                         <input
                           type="text"
                           placeholder="Search templates..."
                           value={templateSearch}
                           onChange={(e) => setTemplateSearch(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                         <select
                           value={templateCategory}
                           onChange={(e) => setTemplateCategory(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="all">All Categories</option>
                           {Array.from(new Set(cannedResponses.map(r => r.category))).map(cat => (
@@ -1655,6 +1704,83 @@ export default function AgentDashboard() {
                               </button>
                             ))
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Save Template Modal */}
+                  {showSaveTemplateModal && (
+                    <div className="fixed inset-0 z-[110] bg-black/50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+                      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 flex flex-col gap-4 animate-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <Save size={18} className="text-emerald-600" /> Save as Template
+                          </h3>
+                          <button onClick={() => setShowSaveTemplateModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                            <X size={20} />
+                          </button>
+                        </div>
+
+                        <div className="flex flex-col gap-3">
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Template Title</label>
+                            <input
+                              type="text"
+                              value={templateTitle}
+                              onChange={(e) => setTemplateTitle(e.target.value)}
+                              placeholder="e.g., Password Reset Instructions"
+                              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                              autoFocus
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Category</label>
+                            <select
+                              value={templateCategoryInput}
+                              onChange={(e) => setTemplateCategoryInput(e.target.value)}
+                              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+                            >
+                              <option value="General">General</option>
+                              <option value="Billing">Billing</option>
+                              <option value="Technical">Technical</option>
+                              <option value="Sales">Sales</option>
+                              <option value="Account">Account</option>
+                              <option value="Other">Other</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Preview</label>
+                            <div className="w-full px-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-700 max-h-24 overflow-y-auto">
+                              {reply.substring(0, 200)}{reply.length > 200 ? '...' : ''}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                          <button
+                            onClick={() => setShowSaveTemplateModal(false)}
+                            className="flex-1 px-4 py-2.5 rounded-lg border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-colors text-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveTemplate}
+                            disabled={!templateTitle.trim() || isSavingTemplate}
+                            className="flex-1 px-4 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold gap-2 flex items-center justify-center disabled:opacity-50 transition-colors text-sm"
+                          >
+                            {isSavingTemplate ? (
+                              <>
+                                <Loader2 size={15} className="animate-spin" /> Saving...
+                              </>
+                            ) : (
+                              <>
+                                <Save size={15} /> Save Template
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
