@@ -14,6 +14,7 @@ import { useTickets, Message, type EscalationExplainability } from '../../contex
 import type { ChatApiResponseContract } from '../../lib/ai-contract';
 
 const API_URL = 'http://localhost:5001';
+const SESSION_ID_KEY = 'smartTicket_sessionId';
 
 function formatMsgTime(createdAt?: string): string {
   if (!createdAt) return '';
@@ -32,6 +33,14 @@ function getTriggerSourceFromReason(reason?: ChatApiResponseContract['decision']
   if (reason === 'sensitive_account_action') return 'policy_rule';
   if (reason === 'low_confidence') return 'confidence_rule';
   return 'model_signal';
+}
+
+function getOrCreateSessionId(): string {
+  const existing = localStorage.getItem(SESSION_ID_KEY);
+  if (existing) return existing;
+  const created = `session-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  localStorage.setItem(SESSION_ID_KEY, created);
+  return created;
 }
 
 function getEscalationReasonCopy(reason?: ChatApiResponseContract['decision']['escalationReason']): string {
@@ -68,6 +77,17 @@ export default function ChatWidget() {
   const MOCK_CUSTOMER_COMPANY = 'Acme Corp';
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
+  const [chatSessionId, setChatSessionId] = useState<string>(() => getOrCreateSessionId());
+  const [isAiResolvedSession, setIsAiResolvedSession] = useState(false);
+  const [feedbackPrompt, setFeedbackPrompt] = useState('Was this AI response helpful?');
+  const [feedbackHelpful, setFeedbackHelpful] = useState<boolean | null>(null);
+  const [feedbackReasons, setFeedbackReasons] = useState<string[]>([]);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackOptions, setFeedbackOptions] = useState<{ positiveReasonOptions: string[]; negativeReasonOptions: string[] }>({
+    positiveReasonOptions: [],
+    negativeReasonOptions: [],
+  });
+  const [feedbackSubmitState, setFeedbackSubmitState] = useState<'idle' | 'submitting' | 'submitted' | 'duplicate' | 'error'>('idle');
   const [hoveredStar, setHoveredStar] = useState(0);
   const [selectedRating, setSelectedRating] = useState(0);
   const [attachment, setAttachment] = useState<string | null>(null);
@@ -112,6 +132,7 @@ export default function ChatWidget() {
       if (activeTicket) {
         if (activeTicket.status === 'resolved' && !isResolved) {
           setIsResolved(true);
+          setIsAiResolvedSession(false);
           const lastMsg = activeTicket.messages[activeTicket.messages.length - 1];
           if (!lastMsg || !lastMsg.text.includes('Chat ended by user')) {
             setMessages([
@@ -242,11 +263,17 @@ export default function ChatWidget() {
         escalateTicket(newId, "Customer", finalHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
       } else if (data.suggestResolution) {
         markAiResolved();
-        localStorage.removeItem('smartTicket_messages');
-        
-        setTimeout(() => {
-          setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
-        }, 3000);
+        setIsResolved(true);
+        setIsAiResolvedSession(true);
+        setFeedbackPrompt(data.feedbackOptions?.helpfulPrompt || 'Was this AI response helpful?');
+        setFeedbackOptions({
+          positiveReasonOptions: data.feedbackOptions?.positiveReasonOptions || [],
+          negativeReasonOptions: data.feedbackOptions?.negativeReasonOptions || [],
+        });
+        setFeedbackHelpful(null);
+        setFeedbackReasons([]);
+        setFeedbackComment('');
+        setFeedbackSubmitState('idle');
       }
     } catch (error) {
       setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: "I'm having trouble reaching the server right now.", createdAt: new Date().toISOString() }]);
@@ -313,10 +340,18 @@ export default function ChatWidget() {
     localStorage.removeItem('smartTicket_messages');
     localStorage.removeItem('smartTicket_ticketId');
     localStorage.removeItem('smartTicket_isResolved');
+    localStorage.removeItem(SESSION_ID_KEY);
+    const nextSessionId = getOrCreateSessionId();
+    setChatSessionId(nextSessionId);
     setTicketId(null);
     setIsResolved(false);
+    setIsAiResolvedSession(false);
     setLatestDecision(null);
     setHasSubmittedCsat(false);
+    setFeedbackHelpful(null);
+    setFeedbackReasons([]);
+    setFeedbackComment('');
+    setFeedbackSubmitState('idle');
     setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
   };
 
@@ -324,6 +359,39 @@ export default function ChatWidget() {
     submitCsat(rating, ticketId || undefined);
     setSelectedRating(rating);
     setHasSubmittedCsat(true);
+  };
+
+  const toggleFeedbackReason = (reason: string) => {
+    setFeedbackReasons(prev => prev.includes(reason) ? prev.filter(r => r !== reason) : [...prev, reason]);
+  };
+
+  const handleFeedbackSubmit = async () => {
+    if (feedbackHelpful === null || feedbackSubmitState === 'submitting') return;
+    setFeedbackSubmitState('submitting');
+    try {
+      const res = await fetch(`${API_URL}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: chatSessionId,
+          ticketId: ticketId || undefined,
+          company: MOCK_CUSTOMER_COMPANY,
+          helpful: feedbackHelpful,
+          reasons: feedbackReasons,
+          comment: feedbackComment.trim(),
+          aiDecision: latestDecision || undefined,
+        }),
+      });
+      if (res.status === 409) {
+        setFeedbackSubmitState('duplicate');
+      } else if (res.ok) {
+        setFeedbackSubmitState('submitted');
+      } else {
+        setFeedbackSubmitState('error');
+      }
+    } catch {
+      setFeedbackSubmitState('error');
+    }
   };
 
   const visibleMessages = messages.filter((msg) => !msg.isInternal);
@@ -550,7 +618,77 @@ export default function ChatWidget() {
             <Box sx={{ p: 1.5, bgcolor: 'background.paper' }}>
               {isResolved ? (
                 <Stack spacing={1.5}>
-                  {!hasSubmittedCsat ? (
+                  {isAiResolvedSession ? (
+                    <Box sx={(theme) => ({ border: `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2, background: '#f8fafc' })}>
+                      {(feedbackSubmitState === 'submitted' || feedbackSubmitState === 'duplicate') ? (
+                        <Box sx={{ textAlign: 'center', py: 1 }}>
+                          <Typography variant="body2" sx={{ fontWeight: 700, color: 'success.dark' }}>
+                            Thanks for your feedback!
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {feedbackSubmitState === 'duplicate'
+                              ? 'Feedback for this chat session was already submitted.'
+                              : 'Your feedback has been recorded.'}
+                          </Typography>
+                        </Box>
+                      ) : (
+                        <Stack spacing={1.25}>
+                          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                            {feedbackPrompt}
+                          </Typography>
+                          <Stack direction="row" spacing={1}>
+                            <Button
+                              size="small"
+                              variant={feedbackHelpful === true ? 'contained' : 'outlined'}
+                              onClick={() => { setFeedbackHelpful(true); setFeedbackReasons([]); }}
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              size="small"
+                              variant={feedbackHelpful === false ? 'contained' : 'outlined'}
+                              onClick={() => { setFeedbackHelpful(false); setFeedbackReasons([]); }}
+                            >
+                              No
+                            </Button>
+                          </Stack>
+                          {feedbackHelpful !== null && (
+                            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                              {(feedbackHelpful ? feedbackOptions.positiveReasonOptions : feedbackOptions.negativeReasonOptions).map((reason) => (
+                                <Chip
+                                  key={reason}
+                                  label={reason.replaceAll('_', ' ')}
+                                  size="small"
+                                  color={feedbackReasons.includes(reason) ? 'primary' : 'default'}
+                                  onClick={() => toggleFeedbackReason(reason)}
+                                />
+                              ))}
+                            </Stack>
+                          )}
+                          <TextField
+                            size="small"
+                            multiline
+                            minRows={2}
+                            value={feedbackComment}
+                            onChange={(e) => setFeedbackComment(e.target.value)}
+                            placeholder="Optional comment..."
+                          />
+                          {feedbackSubmitState === 'error' && (
+                            <Typography variant="caption" color="error">
+                              Could not submit feedback. Please try again.
+                            </Typography>
+                          )}
+                          <Button
+                            variant="contained"
+                            onClick={handleFeedbackSubmit}
+                            disabled={feedbackHelpful === null || feedbackSubmitState === 'submitting'}
+                          >
+                            {feedbackSubmitState === 'submitting' ? 'Submitting...' : 'Submit Feedback'}
+                          </Button>
+                        </Stack>
+                      )}
+                    </Box>
+                  ) : !hasSubmittedCsat ? (
                     <Box sx={(theme) => ({ border: `1px solid ${theme.palette.divider}`, borderRadius: 2, p: 2, background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)' })}>
                       <Stack alignItems="center" spacing={1.5}>
                         <Box sx={{ width: 44, height: 44, borderRadius: '50%', bgcolor: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.35)' }}>
