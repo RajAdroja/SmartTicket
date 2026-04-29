@@ -844,17 +844,41 @@ export default function AgentDashboard() {
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Knowledge Base Content</p>
-                  {kbText && (
-                    <button onClick={() => setKbText('')} className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700">
-                      <Trash2 size={12} /> Clear all
-                    </button>
-                  )}
+                  {kbText ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-zinc-400">{kbText.length.toLocaleString()} characters</span>
+                      <button onClick={() => setKbText('')} className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700">
+                        <Trash2 size={12} /> Clear all
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
+
+                {!kbText && (
+                  <div className="mb-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4 flex gap-3">
+                    <div className="shrink-0 mt-0.5">
+                      <Sparkles size={16} className="text-indigo-500" />
+                    </div>
+                    <div className="text-xs text-indigo-700 space-y-2 leading-relaxed">
+                      <p className="font-semibold text-indigo-800">How the AI uses this</p>
+                      <p>Anything you write here is injected into every AI chat as background context. The AI uses it to answer product questions, pricing, policies, and FAQs without escalating.</p>
+                      <p className="font-medium text-indigo-800 mt-1">Suggested format:</p>
+                      <ul className="list-disc list-inside space-y-1 text-indigo-600">
+                        <li>Company name and what your product does</li>
+                        <li>Pricing tiers and plan limits</li>
+                        <li>Common troubleshooting steps</li>
+                        <li>Support hours and escalation policy</li>
+                        <li>FAQs — one question + answer per paragraph</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   value={kbText}
                   onChange={e => setKbText(e.target.value)}
-                  placeholder="Type or paste knowledge base content here, or upload a PDF above..."
-                  className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-sm min-h-[200px] bg-white text-zinc-800 placeholder:text-zinc-400"
+                  placeholder={`Example:\n\nAcmeCorp is a B2B SaaS project management tool.\n\nPricing:\n- Starter: Free, up to 3 users\n- Pro: $10/mo, unlimited users\n- Enterprise: $50/mo, SSO + priority support\n\nSupport hours: Mon–Fri, 9AM–5PM EST.\nFor billing issues, always escalate to a human agent.`}
+                  className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-sm min-h-[200px] bg-white text-zinc-800 placeholder:text-zinc-300"
                 />
               </div>
             </div>
