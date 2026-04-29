@@ -16,6 +16,14 @@ import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } f
 
 dotenv.config();
 
+function flagEnabled(value: string | undefined, fallback: boolean) {
+  if (value === undefined) return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+}
+
+const CONFIDENCE_MODE = flagEnabled(process.env.CONFIDENCE_MODE, true);
+const FEEDBACK_LOOP_ENABLED = flagEnabled(process.env.FEEDBACK_LOOP_ENABLED, true);
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const app = express();
@@ -97,29 +105,40 @@ app.post('/api/chat', async (req, res) => {
   const userIntentEscalation = /human|agent|support|escalate|representative/i.test(lastUserText);
   const lowConfidenceEscalation = decision.confidenceScore < LOW_CONFIDENCE_THRESHOLD || decision.confidenceLabel === 'low';
   const sensitiveActionEscalation = decision.escalationReason === 'sensitive_account_action';
-  const finalSuggestEscalation = suggestEscalation || lowConfidenceEscalation || sensitiveActionEscalation || userIntentEscalation;
-  const finalSuggestResolution = finalSuggestEscalation ? false : suggestResolution;
+  const finalSuggestEscalation = CONFIDENCE_MODE
+    ? suggestEscalation || lowConfidenceEscalation || sensitiveActionEscalation || userIntentEscalation
+    : suggestEscalation;
+  const finalSuggestResolution = CONFIDENCE_MODE
+    ? (finalSuggestEscalation ? false : suggestResolution)
+    : suggestResolution;
 
-  let finalEscalationReason = decision.escalationReason;
-  if (sensitiveActionEscalation) {
-    finalEscalationReason = 'sensitive_account_action';
-  } else if (userIntentEscalation) {
-    finalEscalationReason = 'user_requested_human';
-  } else if (lowConfidenceEscalation) {
-    finalEscalationReason = 'low_confidence';
-  } else if (!finalSuggestEscalation) {
-    finalEscalationReason = 'none';
-  }
-
-  const finalDecision = ChatDecisionSchema.parse({
-    ...decision,
-    escalationReason: finalEscalationReason,
-    recommendedAction: finalSuggestEscalation
-      ? 'auto_escalate'
-      : decision.confidenceLabel === 'medium'
-        ? 'offer_human'
-        : 'continue_ai',
-  });
+  const finalDecision = (() => {
+    if (!CONFIDENCE_MODE) {
+      return ChatDecisionSchema.parse({
+        ...decision,
+        recommendedAction: suggestEscalation ? 'auto_escalate' : 'continue_ai',
+      });
+    }
+    let finalEscalationReason = decision.escalationReason;
+    if (sensitiveActionEscalation) {
+      finalEscalationReason = 'sensitive_account_action';
+    } else if (userIntentEscalation) {
+      finalEscalationReason = 'user_requested_human';
+    } else if (lowConfidenceEscalation) {
+      finalEscalationReason = 'low_confidence';
+    } else if (!finalSuggestEscalation) {
+      finalEscalationReason = 'none';
+    }
+    return ChatDecisionSchema.parse({
+      ...decision,
+      escalationReason: finalEscalationReason,
+      recommendedAction: finalSuggestEscalation
+        ? 'auto_escalate'
+        : decision.confidenceLabel === 'medium'
+          ? 'offer_human'
+          : 'continue_ai',
+    });
+  })();
 
   const payload = ChatApiResponseSchema.parse({
     reply,
@@ -145,6 +164,9 @@ app.get('/api/metrics', async (req, res) => {
 });
 
 app.post('/api/feedback', async (req, res) => {
+  if (!FEEDBACK_LOOP_ENABLED) {
+    return res.status(503).json({ error: 'Feedback loop is disabled' });
+  }
   const parsedRequest = FeedbackRequestSchema.safeParse(req.body);
   if (!parsedRequest.success) {
     return res.status(400).json({
@@ -183,7 +205,17 @@ app.post('/api/feedback', async (req, res) => {
 });
 
 app.get('/api/metrics/feedback', async (_req, res) => {
+  if (!FEEDBACK_LOOP_ENABLED) {
+    return res.status(503).json({ error: 'Feedback loop is disabled' });
+  }
   res.json(await getFeedbackAnalytics());
+});
+
+app.get('/api/feature-flags', (_req, res) => {
+  res.json({
+    confidenceMode: CONFIDENCE_MODE,
+    feedbackLoopEnabled: FEEDBACK_LOOP_ENABLED,
+  });
 });
 
 app.post('/api/suggest-replies', async (req, res) => {
