@@ -8,7 +8,7 @@ import pdfParse from 'pdf-parse';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
-  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel
+  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -85,6 +85,38 @@ app.get('/api/tickets/all', async (req, res) => {
 
 app.get('/api/metrics', async (req, res) => {
   res.json(await getMetrics());
+});
+
+app.post('/api/feedback', async (req, res) => {
+  const { sessionId, ticketId, company, helpful, reasons, comment, aiDecision } = req.body ?? {};
+  if (!sessionId || typeof sessionId !== 'string') {
+    return res.status(400).json({ error: 'sessionId is required' });
+  }
+  if (typeof helpful !== 'boolean') {
+    return res.status(400).json({ error: 'helpful must be boolean' });
+  }
+  if (reasons && !Array.isArray(reasons)) {
+    return res.status(400).json({ error: 'reasons must be an array when provided' });
+  }
+  if (comment && typeof comment !== 'string') {
+    return res.status(400).json({ error: 'comment must be a string when provided' });
+  }
+
+  const result = await submitAiFeedback({
+    sessionId,
+    ticketId,
+    company,
+    helpful,
+    reasons,
+    comment,
+    aiDecision,
+  });
+
+  if (result.duplicate) {
+    return res.status(409).json({ error: 'Feedback already submitted for this session' });
+  }
+
+  res.json({ success: true });
 });
 
 app.post('/api/suggest-replies', async (req, res) => {

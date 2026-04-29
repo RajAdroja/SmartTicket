@@ -88,6 +88,23 @@ export const TicketModel = mongoose.model('Ticket', TicketSchema);
 export const MetricsModel = mongoose.model('Metrics', MetricsSchema);
 export const KbModel = mongoose.model('Kb', KbSchema);
 
+const FeedbackSchema = new Schema({
+  sessionId: { type: String, required: true, unique: true },
+  ticketId: { type: String, default: null },
+  company: { type: String, default: 'global' },
+  helpful: { type: Boolean, required: true },
+  reasons: { type: [String], default: [] },
+  comment: { type: String, default: '' },
+  aiDecision: {
+    confidenceScore: Number,
+    confidenceLabel: String,
+    escalationReason: String,
+    recommendedAction: String,
+  },
+}, { timestamps: true });
+
+export const FeedbackModel = mongoose.model('Feedback', FeedbackSchema);
+
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) throw new Error('MONGODB_URI not set in .env');
@@ -164,6 +181,39 @@ export const getKnowledgeBase = async (company: string = 'global'): Promise<stri
 
 export const setKnowledgeBase = async (content: string, company: string = 'global') => {
   await KbModel.updateOne({ _id: company }, { content }, { upsert: true });
+};
+
+export const submitAiFeedback = async (payload: {
+  sessionId: string;
+  ticketId?: string;
+  company?: string;
+  helpful: boolean;
+  reasons?: string[];
+  comment?: string;
+  aiDecision?: {
+    confidenceScore?: number;
+    confidenceLabel?: string;
+    escalationReason?: string;
+    recommendedAction?: string;
+  };
+}) => {
+  try {
+    const doc = await FeedbackModel.create({
+      sessionId: payload.sessionId,
+      ticketId: payload.ticketId || null,
+      company: payload.company || 'global',
+      helpful: payload.helpful,
+      reasons: payload.reasons || [],
+      comment: payload.comment || '',
+      aiDecision: payload.aiDecision || {},
+    });
+    return { ok: true as const, duplicate: false as const, doc };
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return { ok: false as const, duplicate: true as const };
+    }
+    throw error;
+  }
 };
 
 export const getExplainabilityMetrics = async () => {
