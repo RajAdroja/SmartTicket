@@ -59,6 +59,7 @@ function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
 export default function AgentDashboard() {
   const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [reply, setReply] = useState('');
   const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge'>('queue');
   const [attachment, setAttachment] = useState<string | null>(null);
@@ -82,6 +83,14 @@ export default function AgentDashboard() {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Brief skeleton on ticket switch
+  useEffect(() => {
+    if (!selectedTicketId) return;
+    setIsLoadingMessages(true);
+    const t = setTimeout(() => setIsLoadingMessages(false), 350);
+    return () => clearTimeout(t);
+  }, [selectedTicketId]);
 
   // Transfer modal state
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -941,7 +950,29 @@ export default function AgentDashboard() {
               {}
               <div className="flex-1 p-8 overflow-y-auto" ref={scrollRef}>
                 <div className="max-w-3xl mx-auto space-y-6 pb-4">
-                  {selectedTicket.messages.map((msg, idx) => {
+                  {isLoadingMessages ? (
+                    // Skeleton bubbles — alternating left/right to mimic a real conversation
+                    <>
+                      {[
+                        { align: 'start', widths: ['w-48', 'w-32'] },
+                        { align: 'end',   widths: ['w-56'] },
+                        { align: 'start', widths: ['w-64', 'w-40', 'w-52'] },
+                        { align: 'end',   widths: ['w-44', 'w-36'] },
+                        { align: 'start', widths: ['w-52'] },
+                      ].map((row, i) => (
+                        <div key={i} className={`flex w-full ${row.align === 'end' ? 'justify-end' : 'justify-start'}`}>
+                          <div className="max-w-[70%] p-4 rounded-2xl bg-slate-100 border border-slate-200 space-y-2 animate-pulse">
+                            <div className="h-2.5 w-16 bg-slate-200 rounded-full" />
+                            {row.widths.map((w, j) => (
+                              <div key={j} className={`h-3 ${w} bg-slate-200 rounded-full`} />
+                            ))}
+                            <div className="h-2 w-10 bg-slate-200 rounded-full mt-1" />
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  ) : null}
+                  {!isLoadingMessages && selectedTicket.messages.map((msg) => {
                     const isAgent = msg.sender === 'agent';
                     const isBot = msg.sender === 'bot';
                     
