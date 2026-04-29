@@ -7,6 +7,20 @@ import { Badge } from '../components/ui/badge';
 
 const API_URL = 'http://localhost:5001';
 
+function formatMsgTime(createdAt?: string): string {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60_000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const isToday = date.toDateString() === now.toDateString();
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return time;
+  return `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
+
 function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -284,7 +298,8 @@ export default function AgentDashboard() {
       sender: 'agent',
       text: reply.trim(),
       attachment: attachment || undefined,
-      isInternal
+      isInternal,
+      createdAt: new Date().toISOString(),
     });
     setReply('');
     setAttachment(null);
@@ -883,12 +898,17 @@ export default function AgentDashboard() {
                           </div>
                           {msg.text && <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</div>}
                           {msg.attachment && (
-                            <img 
-                              src={msg.attachment} 
-                              alt="Attachment" 
-                              className="mt-3 rounded-xl max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-all border border-slate-200 shadow-sm" 
+                            <img
+                              src={msg.attachment}
+                              alt="Attachment"
+                              className="mt-3 rounded-xl max-w-full max-h-64 object-cover cursor-zoom-in hover:opacity-90 transition-all border border-slate-200 shadow-sm"
                               onClick={() => setZoomedImage(msg.attachment!)}
                             />
+                          )}
+                          {formatMsgTime(msg.createdAt) && (
+                            <div className={`text-[10px] mt-1.5 ${isAgent ? (msg.isInternal ? 'text-amber-500' : 'text-blue-200') : 'text-slate-400'}`}>
+                              {formatMsgTime(msg.createdAt)}
+                            </div>
                           )}
                         </div>
                       </div>

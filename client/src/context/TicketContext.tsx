@@ -7,6 +7,7 @@ export interface Message {
   text: string;
   attachment?: string;
   isInternal?: boolean;
+  createdAt?: string;
 }
 
 export interface Ticket {

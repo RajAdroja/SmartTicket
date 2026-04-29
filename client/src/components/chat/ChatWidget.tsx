@@ -14,6 +14,18 @@ import { useTickets, Message } from '../../context/TicketContext';
 
 const API_URL = 'http://localhost:5001';
 
+function formatMsgTime(createdAt?: string): string {
+  if (!createdAt) return '';
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMins = Math.floor((now.getTime() - date.getTime()) / 60_000);
+  if (diffMins < 1) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const isToday = date.toDateString() === now.toDateString();
+  const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return isToday ? time : `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
+
 export default function ChatWidget() {
   const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount, socket } = useTickets();
   
@@ -136,11 +148,12 @@ export default function ChatWidget() {
     e?.preventDefault();
     if (!input.trim() && !attachment) return;
 
-    const userMessage: Message = { 
-      id: Date.now().toString(), 
-      sender: 'user', 
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      sender: 'user',
       text: input.trim(),
-      attachment: attachment || undefined
+      attachment: attachment || undefined,
+      createdAt: new Date().toISOString(),
     };
     
     const newHistory = [...messages, userMessage];
@@ -166,7 +179,7 @@ export default function ChatWidget() {
       });
       const data = await response.json();
       
-      const botMessage: Message = { id: Date.now().toString(), sender: 'bot', text: data.reply };
+      const botMessage: Message = { id: Date.now().toString(), sender: 'bot', text: data.reply, createdAt: new Date().toISOString() };
       const updatedHistory = [...newHistory, botMessage];
       setMessages(updatedHistory);
       
@@ -174,10 +187,11 @@ export default function ChatWidget() {
         const newId = `ticket-${Date.now()}`;
         setTicketId(newId);
         
-        const escalationMsg: Message = { 
-          id: (Date.now() + 1).toString(), 
-          sender: 'bot', 
-          text: 'I am connecting you to the next available agent. Please hold on...' 
+        const escalationMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          sender: 'bot',
+          text: 'I am connecting you to the next available agent. Please hold on...',
+          createdAt: new Date().toISOString(),
         };
         
         const finalHistory = [...updatedHistory, escalationMsg];
@@ -194,7 +208,7 @@ export default function ChatWidget() {
         }, 3000);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: "I'm having trouble reaching the server right now." }]);
+      setMessages(prev => [...prev, { id: Date.now().toString(), sender: 'bot', text: "I'm having trouble reaching the server right now.", createdAt: new Date().toISOString() }]);
     } finally {
       setIsTyping(false);
     }
@@ -204,10 +218,11 @@ export default function ChatWidget() {
     const newId = `ticket-${Date.now()}`;
     setTicketId(newId);
     
-    const escalationMsg: Message = { 
-      id: Date.now().toString(), 
-      sender: 'bot', 
-      text: 'I am connecting you to the next available agent. Please hold on...' 
+    const escalationMsg: Message = {
+      id: Date.now().toString(),
+      sender: 'bot',
+      text: 'I am connecting you to the next available agent. Please hold on...',
+      createdAt: new Date().toISOString(),
     };
     
     const finalHistory = [...messages, escalationMsg];
@@ -234,7 +249,7 @@ export default function ChatWidget() {
 
   const handleEndChat = () => {
     if (ticketId) {
-      const endMsg: Message = { id: Date.now().toString(), sender: 'bot', text: 'Chat ended by user.' };
+      const endMsg: Message = { id: Date.now().toString(), sender: 'bot', text: 'Chat ended by user.', createdAt: new Date().toISOString() };
       sendAgentReply(ticketId, endMsg);
       resolveTicket(ticketId);
       // Set resolved locally immediately — don't wait for the socket round-trip
@@ -280,7 +295,7 @@ export default function ChatWidget() {
         if (prev.length === 1 && prev[0].sender === 'bot') {
           return [
             ...prev,
-            { id: `proactive-${Date.now()}`, sender: 'bot', text: '👋 Need help? I\'m here if you have any questions!' }
+            { id: `proactive-${Date.now()}`, sender: 'bot', text: '👋 Need help? I\'m here if you have any questions!', createdAt: new Date().toISOString() }
           ];
         }
         return prev;
@@ -448,6 +463,11 @@ export default function ChatWidget() {
                               cursor: 'zoom-in',
                             }}
                           />
+                        )}
+                        {formatMsgTime(msg.createdAt) && (
+                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5, opacity: 0.6, fontSize: '0.65rem' }}>
+                            {formatMsgTime(msg.createdAt)}
+                          </Typography>
                         )}
                       </Box>
                     </Box>
