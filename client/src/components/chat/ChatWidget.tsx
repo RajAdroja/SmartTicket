@@ -11,6 +11,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import { useTickets, Message } from '../../context/TicketContext';
+import type { ChatApiResponseContract } from '../../lib/ai-contract';
 
 const API_URL = 'http://localhost:5001';
 
@@ -179,7 +180,7 @@ export default function ChatWidget() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newHistory, company: MOCK_CUSTOMER_COMPANY })
       });
-      const data = await response.json();
+      const data = (await response.json()) as ChatApiResponseContract;
       
       const botMessage: Message = { id: Date.now().toString(), sender: 'bot', text: data.reply, createdAt: new Date().toISOString() };
       const updatedHistory = [...newHistory, botMessage];
