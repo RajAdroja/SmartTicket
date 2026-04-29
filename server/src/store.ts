@@ -32,6 +32,8 @@ export interface Ticket {
   lastAiConfidenceLabel?: ConfidenceLabel;
   escalationReason?: EscalationReason;
   escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const MessageSchema = new Schema<Message>({
@@ -121,6 +123,18 @@ const FeedbackSchema = new Schema({
 }, { timestamps: true });
 
 export const FeedbackModel = mongoose.model('Feedback', FeedbackSchema);
+
+const MetricsSnapshotSchema = new Schema({
+  date: { type: Date, required: true, index: true },
+  aiResolved: { type: Number, default: 0 },
+  escalated: { type: Number, default: 0 },
+  humanResolved: { type: Number, default: 0 },
+  totalCsatScore: { type: Number, default: 0 },
+  csatCount: { type: Number, default: 0 },
+  avgResolutionTimeMs: { type: Number, default: 0 },
+}, { timestamps: true });
+
+export const MetricsSnapshotModel = mongoose.model('MetricsSnapshot', MetricsSnapshotSchema);
 
 export async function connectDB() {
   const uri = process.env.MONGODB_URI;
@@ -389,4 +403,52 @@ export const incrementCannedResponseUsage = async (id: string) => {
     { new: true }
   ).lean();
   return response;
+};
+
+// Time-Series Metrics
+
+export const saveMetricsSnapshot = async (date: Date, metrics: any) => {
+  const snapshot = await MetricsSnapshotModel.findOneAndUpdate(
+    { date: new Date(date.toDateString()) },
+    {
+      date: new Date(date.toDateString()),
+      aiResolved: metrics.aiResolved || 0,
+      escalated: metrics.escalated || 0,
+      humanResolved: metrics.humanResolved || 0,
+      totalCsatScore: metrics.totalCsatScore || 0,
+      csatCount: metrics.csatCount || 0,
+      avgResolutionTimeMs: metrics.avgResolutionTimeMs || 0,
+    },
+    { upsert: true, new: true }
+  ).lean();
+  return snapshot;
+};
+
+export const getMetricsTimeSeries = async (days: number = 30) => {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
+  const snapshots = await MetricsSnapshotModel.find({
+    date: { $gte: startDate }
+  })
+    .sort({ date: 1 })
+    .lean();
+  
+  return snapshots;
+};
+
+export const calculateAverageResolutionTime = async () => {
+  const resolved = await TicketModel.find({ status: 'resolved' })
+    .select('escalatedAt updatedAt')
+    .lean();
+  
+  if (resolved.length === 0) return 0;
+  
+  const totalMs = resolved.reduce((sum, ticket) => {
+    const escalated = new Date(ticket.escalatedAt).getTime();
+    const updated = ticket.updatedAt ? new Date(ticket.updatedAt).getTime() : new Date().getTime();
+    return sum + (updated - escalated);
+  }, 0);
+  
+  return Math.round(totalMs / resolved.length);
 };

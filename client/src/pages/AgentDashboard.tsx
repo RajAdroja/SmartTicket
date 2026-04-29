@@ -111,6 +111,8 @@ export default function AgentDashboard() {
   const [feedbackAnalytics, setFeedbackAnalytics] = useState<FeedbackAnalytics | null>(null);
   const [analyticsCompanyFilter, setAnalyticsCompanyFilter] = useState<string>('all');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
+  const [timeseriesMetrics, setTimeseriesMetrics] = useState<any[]>([]);
+  const [timeseriesDays, setTimeseriesDays] = useState(30);
   const [setupCompanyName, setSetupCompanyName] = useState('');
   const [setupSnippet, setSetupSnippet] = useState('');
   const [isGeneratingSnippet, setIsGeneratingSnippet] = useState(false);
@@ -332,7 +334,13 @@ export default function AgentDashboard() {
       .then(res => res.json())
       .then(data => setFeedbackAnalytics(data))
       .catch(() => setFeedbackAnalytics(null));
-  }, [activeTab]);
+    
+    // Fetch time-series metrics
+    fetch(`${API_URL}/api/metrics/timeseries?days=${timeseriesDays}`)
+      .then(res => res.json())
+      .then(data => setTimeseriesMetrics(data || []))
+      .catch(() => setTimeseriesMetrics([]));
+  }, [activeTab, timeseriesDays]);
 
   // Auto-select first available company for KB editor when tickets load
   useEffect(() => {
@@ -1143,6 +1151,105 @@ export default function AgentDashboard() {
                   </div>
                 ) : (
                   <p className="text-sm text-zinc-400 mt-4">No KB suggestions yet. Collect more AI feedback to generate recommendations.</p>
+                )}
+              </div>
+
+              {/* Time-Series Metrics Chart */}
+              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-base font-semibold text-zinc-900">Metrics Trends</h2>
+                    <p className="text-sm text-zinc-500 mt-1">Performance over the last {timeseriesDays} days</p>
+                  </div>
+                  <select
+                    value={timeseriesDays}
+                    onChange={(e) => setTimeseriesDays(parseInt(e.target.value))}
+                    className="text-sm border border-zinc-200 rounded-lg px-3 py-1.5 bg-white text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value={7}>Last 7 days</option>
+                    <option value={30}>Last 30 days</option>
+                    <option value={90}>Last 90 days</option>
+                  </select>
+                </div>
+
+                {timeseriesMetrics.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* Tickets Resolved Trend */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-zinc-700">Daily Resolutions</span>
+                        <span className="text-xs text-zinc-400">
+                          {timeseriesMetrics[timeseriesMetrics.length - 1]?.humanResolved || 0} today
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-1 h-16 bg-zinc-50 p-2 rounded-lg">
+                        {timeseriesMetrics.map((m, i) => {
+                          const max = Math.max(...timeseriesMetrics.map(x => x.humanResolved || 0), 1);
+                          const height = ((m.humanResolved || 0) / max) * 100;
+                          return (
+                            <div
+                              key={i}
+                              className="flex-1 bg-emerald-500 rounded-sm hover:bg-emerald-600 transition-colors"
+                              style={{ height: `${Math.max(height, 5)}%` }}
+                              title={`${m.humanResolved || 0} resolved on ${new Date(m.date).toLocaleDateString()}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Escalations Trend */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-zinc-700">Daily Escalations</span>
+                        <span className="text-xs text-zinc-400">
+                          {timeseriesMetrics[timeseriesMetrics.length - 1]?.escalated || 0} today
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-1 h-16 bg-zinc-50 p-2 rounded-lg">
+                        {timeseriesMetrics.map((m, i) => {
+                          const max = Math.max(...timeseriesMetrics.map(x => x.escalated || 0), 1);
+                          const height = ((m.escalated || 0) / max) * 100;
+                          return (
+                            <div
+                              key={i}
+                              className="flex-1 bg-amber-500 rounded-sm hover:bg-amber-600 transition-colors"
+                              style={{ height: `${Math.max(height, 5)}%` }}
+                              title={`${m.escalated || 0} escalated on ${new Date(m.date).toLocaleDateString()}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* CSAT Trend */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-zinc-700">Daily Avg CSAT</span>
+                        <span className="text-xs text-zinc-400">
+                          {timeseriesMetrics[timeseriesMetrics.length - 1]?.csatCount ? 
+                            (timeseriesMetrics[timeseriesMetrics.length - 1].totalCsatScore / timeseriesMetrics[timeseriesMetrics.length - 1].csatCount).toFixed(1) 
+                            : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex items-end gap-1 h-16 bg-zinc-50 p-2 rounded-lg">
+                        {timeseriesMetrics.map((m, i) => {
+                          const score = m.csatCount ? m.totalCsatScore / m.csatCount : 0;
+                          const height = (score / 5) * 100;
+                          return (
+                            <div
+                              key={i}
+                              className="flex-1 bg-blue-500 rounded-sm hover:bg-blue-600 transition-colors"
+                              style={{ height: `${Math.max(height, 5)}%` }}
+                              title={`${score.toFixed(1)}/5 on ${new Date(m.date).toLocaleDateString()}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-400 text-center py-8">No historical data yet. Check back tomorrow!</p>
                 )}
               </div>
             </div>

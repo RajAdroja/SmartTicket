@@ -10,7 +10,8 @@ import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent,
-  createCannedResponse, getCannedResponses, updateCannedResponse, deleteCannedResponse, incrementCannedResponseUsage
+  createCannedResponse, getCannedResponses, updateCannedResponse, deleteCannedResponse, incrementCannedResponseUsage,
+  saveMetricsSnapshot, getMetricsTimeSeries, calculateAverageResolutionTime
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -268,6 +269,16 @@ app.get('/api/agents/load', async (req, res) => {
 
 app.get('/api/metrics', async (req, res) => {
   res.json(await getMetrics());
+});
+
+app.get('/api/metrics/timeseries', async (req, res) => {
+  const days = parseInt(req.query.days as string) || 30;
+  try {
+    const timeseries = await getMetricsTimeSeries(days);
+    res.json(timeseries);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch time-series metrics' });
+  }
 });
 
 app.post('/api/feedback', async (req, res) => {
@@ -739,6 +750,20 @@ const PORT = process.env.PORT || 5001;
 connectDB().then(() => {
   server.listen(PORT, () => {
   });
+
+  // Daily metrics snapshot job
+  setInterval(async () => {
+    try {
+      const metrics = await getMetrics();
+      const avgResolutionTime = await calculateAverageResolutionTime();
+      await saveMetricsSnapshot(new Date(), {
+        ...metrics,
+        avgResolutionTimeMs: avgResolutionTime,
+      });
+    } catch (err) {
+      console.error('Failed to save metrics snapshot:', err);
+    }
+  }, 24 * 60 * 60 * 1000); // Run daily
 }).catch((err) => {
   process.exit(1);
 });
