@@ -103,6 +103,7 @@ export default function AgentDashboard() {
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'pending' | 'on-hold' | 'resolved'>('all');
+  const [ticketOwnerFilter, setTicketOwnerFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
   const [ticketCategoryFilter, setTicketCategoryFilter] = useState<string>('all');
   const [ticketEscalationFilter, setTicketEscalationFilter] = useState<'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human'>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -240,6 +241,13 @@ export default function AgentDashboard() {
   const filteredTickets = [...tickets].reverse().filter(ticket => {
     const normalized = normalizeStatus(ticket.status);
     if (ticketStatusFilter !== 'all' && normalized !== ticketStatusFilter) {
+      return false;
+    }
+
+    if (ticketOwnerFilter === 'mine' && ticket.assignedAgentId !== agentId) {
+      return false;
+    }
+    if (ticketOwnerFilter === 'unassigned' && ticket.assignedAgentId) {
       return false;
     }
 
@@ -478,7 +486,7 @@ export default function AgentDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <ArrowRightLeft size={18} className="text-blue-600" /> Transfer Ticket
+                  <ArrowRightLeft size={18} className="text-blue-600" /> Reassign Ticket
                 </h3>
                 <p className="text-sm text-slate-500 mt-0.5">Reassign this conversation to another online agent.</p>
               </div>
@@ -554,7 +562,7 @@ export default function AgentDashboard() {
                 disabled={!transferTargetId}
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white gap-2 disabled:opacity-50"
               >
-                <ArrowRightLeft size={15} /> Transfer Ticket
+                <ArrowRightLeft size={15} /> Reassign Ticket
               </Button>
             </div>
           </div>
@@ -714,13 +722,25 @@ export default function AgentDashboard() {
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
             <div className="space-y-3 mb-3">
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap items-center">
                 <Input
                   value={ticketSearch}
                   onChange={e => setTicketSearch(e.target.value)}
                   placeholder="Search tickets..."
-                  className="flex-1 text-sm"
+                  className="flex-1 min-w-[220px] text-sm"
                 />
+                <div className="flex gap-2 flex-wrap">
+                  {['all', 'mine', 'unassigned'].map((ownerFilter) => (
+                    <button
+                      key={ownerFilter}
+                      type="button"
+                      onClick={() => setTicketOwnerFilter(ownerFilter as 'all' | 'mine' | 'unassigned')}
+                      className={`text-xs font-semibold rounded-xl py-2 px-3 transition-all ${ticketOwnerFilter === ownerFilter ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'}`}
+                    >
+                      {ownerFilter === 'all' ? 'All' : ownerFilter === 'mine' ? 'My tickets' : 'Unassigned'}
+                    </button>
+                  ))}
+                </div>
                 <select
                   value={ticketCategoryFilter}
                   onChange={e => setTicketCategoryFilter(e.target.value)}
