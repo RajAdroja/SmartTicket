@@ -250,3 +250,69 @@ export const getExplainabilityMetrics = async () => {
     triggerSourceCounts,
   };
 };
+
+const KB_SUGGESTION_MAP: Record<string, string> = {
+  incorrect_answer: 'Review and correct core troubleshooting answers in the knowledge base.',
+  unclear_answer: 'Rewrite key answers with simpler language and step-by-step formatting.',
+  missing_context: 'Add missing product/version and account-state context to common issue entries.',
+  too_slow: 'Create concise quick-response snippets for high-frequency support questions.',
+  needed_human_help: 'Document clearer escalation rules and boundary cases for AI handoff.',
+};
+
+export const getFeedbackAnalytics = async () => {
+  const docs = await FeedbackModel.find(
+    {},
+    { helpful: 1, reasons: 1, aiDecision: 1 }
+  ).lean() as Array<{
+    helpful: boolean;
+    reasons?: string[];
+    aiDecision?: { confidenceLabel?: ConfidenceLabel };
+  }>;
+
+  const totalFeedback = docs.length;
+  let helpfulCount = 0;
+  let lowConfidenceTotal = 0;
+  let lowConfidenceHelpfulCount = 0;
+  const negativeReasonCounts: Record<string, number> = {};
+
+  for (const doc of docs) {
+    if (doc.helpful) helpfulCount += 1;
+
+    if (doc.aiDecision?.confidenceLabel === 'low') {
+      lowConfidenceTotal += 1;
+      if (doc.helpful) lowConfidenceHelpfulCount += 1;
+    }
+
+    if (!doc.helpful) {
+      for (const reason of doc.reasons ?? []) {
+        negativeReasonCounts[reason] = (negativeReasonCounts[reason] ?? 0) + 1;
+      }
+    }
+  }
+
+  const helpfulRate = totalFeedback > 0 ? helpfulCount / totalFeedback : 0;
+  const lowConfidenceHelpfulRate = lowConfidenceTotal > 0 ? lowConfidenceHelpfulCount / lowConfidenceTotal : 0;
+  const topNegativeReasons = Object.entries(negativeReasonCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([reason, count]) => ({ reason, count }));
+
+  const kbImprovementSuggestions = topNegativeReasons
+    .map(({ reason, count }) => {
+      const suggestion = KB_SUGGESTION_MAP[reason];
+      if (!suggestion) return null;
+      return { reason, count, suggestion };
+    })
+    .filter(Boolean);
+
+  return {
+    totalFeedback,
+    helpfulCount,
+    unhelpfulCount: totalFeedback - helpfulCount,
+    helpfulRate,
+    lowConfidenceSampleSize: lowConfidenceTotal,
+    lowConfidenceHelpfulRate,
+    topNegativeReasons,
+    kbImprovementSuggestions,
+  };
+};

@@ -8,7 +8,7 @@ import pdfParse from 'pdf-parse';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
-  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback
+  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -117,6 +117,10 @@ app.post('/api/feedback', async (req, res) => {
   }
 
   res.json({ success: true });
+});
+
+app.get('/api/metrics/feedback', async (_req, res) => {
+  res.json(await getFeedbackAnalytics());
 });
 
 app.post('/api/suggest-replies', async (req, res) => {
