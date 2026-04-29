@@ -100,6 +100,9 @@ let agentCount = 0;
 // Track online agents: socketId -> { agentId, name, status }
 const onlineAgents = new Map<string, { agentId: string; name: string; status: 'available' | 'busy' | 'away' }>();
 
+// Track active typing: socketId -> { ticketId, sender }
+const activeTyping = new Map<string, { ticketId: string; sender: 'user' | 'agent' }>();
+
 io.on('connection', (socket) => {
 
   socket.on('agent_join', (payload?: { agentId?: string; name?: string }) => {
@@ -223,6 +226,11 @@ io.on('connection', (socket) => {
   });
 
   socket.on('typing_status', (data: { ticketId: string, sender: 'user' | 'agent', isTyping: boolean }) => {
+    if (data.isTyping) {
+      activeTyping.set(socket.id, { ticketId: data.ticketId, sender: data.sender });
+    } else {
+      activeTyping.delete(socket.id);
+    }
     io.to(data.ticketId).emit('typing_status', data);
     io.to('agents_room').emit('typing_status', data);
   });
@@ -234,6 +242,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
+    // Clear any active typing indicator for this socket
+    const typing = activeTyping.get(socket.id);
+    if (typing) {
+      activeTyping.delete(socket.id);
+      const clearEvent = { ticketId: typing.ticketId, sender: typing.sender, isTyping: false };
+      io.to(typing.ticketId).emit('typing_status', clearEvent);
+      io.to('agents_room').emit('typing_status', clearEvent);
+    }
+
     const wasAgent = onlineAgents.has(socket.id);
     if (wasAgent) {
       onlineAgents.delete(socket.id);
