@@ -15,7 +15,10 @@
   iframe.style.border = 'none';
   iframe.style.zIndex = '2147483647';
   iframe.style.backgroundColor = 'transparent';
+  iframe.style.background = 'none';
   iframe.allowTransparency = 'true';
+  iframe.setAttribute('allowtransparency', 'true');
+  iframe.frameBorder = '0';
   iframe.style.colorScheme = 'normal';
   iframe.style.transition = 'width 0.2s ease, height 0.2s ease';
   

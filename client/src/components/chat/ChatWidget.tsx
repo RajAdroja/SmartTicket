@@ -457,7 +457,7 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
         </Box>
       )}
 
-      <Box sx={{ position: 'fixed', bottom: isEmbedded ? 0 : 24, right: isEmbedded ? 0 : 24, top: (isEmbedded && isOpen) ? 0 : 'auto', left: (isEmbedded && isOpen) ? 0 : 'auto', zIndex: 1200 }}>
+      <Box sx={{ position: 'fixed', bottom: isEmbedded ? 0 : 24, right: isEmbedded ? 0 : 24, top: (isEmbedded && isOpen) ? 0 : 'auto', left: (isEmbedded && isOpen) ? 0 : 'auto', zIndex: 1200, backgroundColor: 'transparent' }}>
         {!isOpen && (
           <Badge badgeContent={unreadCount} color="error" overlap="circular" invisible={unreadCount === 0}>
             <IconButton

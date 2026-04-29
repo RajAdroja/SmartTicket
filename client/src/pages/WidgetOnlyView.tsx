@@ -8,21 +8,29 @@ export default function WidgetOnlyView() {
   useEffect(() => {
     document.documentElement.style.setProperty('color-scheme', 'light', 'important');
     document.documentElement.style.setProperty('--background', 'transparent');
-    document.body.style.setProperty('background-color', 'transparent', 'important');
-    document.documentElement.style.setProperty('background-color', 'transparent', 'important');
+    document.documentElement.style.setProperty('background', 'transparent', 'important');
+    document.body.style.setProperty('background', 'transparent', 'important');
     const root = document.getElementById('root');
-    if (root) root.style.setProperty('background-color', 'transparent', 'important');
+    if (root) {
+      root.style.setProperty('background-color', 'transparent', 'important');
+      root.style.setProperty('background', 'transparent', 'important');
+    }
     
     return () => {
       document.documentElement.style.removeProperty('color-scheme');
       document.body.style.removeProperty('background-color');
+      document.body.style.removeProperty('background');
       document.documentElement.style.removeProperty('background-color');
-      if (root) root.style.removeProperty('background-color');
+      document.documentElement.style.removeProperty('background');
+      if (root) {
+        root.style.removeProperty('background-color');
+        root.style.removeProperty('background');
+      }
     };
   }, []);
 
   return (
-    <Box sx={{ position: 'relative', minHeight: '100vh', backgroundColor: 'transparent' }}>
+    <Box sx={{ position: 'relative', minHeight: '100vh', backgroundColor: 'transparent !important', background: 'transparent !important' }}>
       <ChatWidget isEmbedded={true} />
     </Box>
   );
