@@ -77,7 +77,8 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
   
   // Read company from URL query param (passed by iframe) or default to 'Acme Corp'
   const searchParams = new URLSearchParams(window.location.search);
-  const MOCK_CUSTOMER_COMPANY = searchParams.get('company') || 'Acme Corp';
+  const CUSTOMER_COMPANY = searchParams.get('company') || 'Acme Corp';
+  const COMPANY_TOKEN = searchParams.get('token') || undefined;
   
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
@@ -235,7 +236,7 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newHistory, company: MOCK_CUSTOMER_COMPANY })
+        body: JSON.stringify({ messages: newHistory, company: CUSTOMER_COMPANY, companyToken: COMPANY_TOKEN })
       });
       const data = (await response.json()) as ChatApiResponseContract;
       setLatestDecision(data.decision || null);
@@ -267,7 +268,7 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
         };
 
         joinTicketRoom(newId);
-        escalateTicket(newId, "Customer", finalHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
+        escalateTicket(newId, "Customer", finalHistory, { name: "Customer", email: "", company: CUSTOMER_COMPANY }, explainability);
       } else if (data.suggestResolution) {
         markAiResolved();
         setIsResolved(true);
@@ -309,7 +310,7 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
       newId,
       'Customer',
       finalHistory,
-      { name: 'Customer', email: '', company: MOCK_CUSTOMER_COMPANY },
+      { name: 'Customer', email: '', company: CUSTOMER_COMPANY },
       {
         escalationReason: 'user_requested_human',
         escalationTriggerSource: 'user_request',
@@ -382,7 +383,7 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
         body: JSON.stringify({
           sessionId: chatSessionId,
           ticketId: ticketId || undefined,
-          company: MOCK_CUSTOMER_COMPANY,
+          company: CUSTOMER_COMPANY,
           helpful: feedbackHelpful,
           reasons: feedbackReasons,
           comment: feedbackComment.trim(),

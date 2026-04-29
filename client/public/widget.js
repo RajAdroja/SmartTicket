@@ -5,10 +5,11 @@
   })();
   
   const company = scriptTag.getAttribute('data-company') || 'global';
+  const token = scriptTag.getAttribute('data-token') || '';
   const serverUrl = scriptTag.src.split('/widget.js')[0];
 
   const iframe = document.createElement('iframe');
-  iframe.src = `${serverUrl}/widget?company=${encodeURIComponent(company)}`;
+  iframe.src = `${serverUrl}/widget?company=${encodeURIComponent(company)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
   iframe.style.position = 'fixed';
   iframe.style.bottom = '20px';
   iframe.style.right = '20px';

@@ -90,7 +90,7 @@ export default function AgentDashboard() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [reply, setReply] = useState('');
-  const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge'>('queue');
+  const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge' | 'setup'>('queue');
   const [attachment, setAttachment] = useState<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [smartReplies, setSmartReplies] = useState<string[]>([]);
@@ -110,6 +110,9 @@ export default function AgentDashboard() {
   const [feedbackAnalytics, setFeedbackAnalytics] = useState<FeedbackAnalytics | null>(null);
   const [analyticsCompanyFilter, setAnalyticsCompanyFilter] = useState<string>('all');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
+  const [setupCompanyName, setSetupCompanyName] = useState('');
+  const [setupSnippet, setSetupSnippet] = useState('');
+  const [isGeneratingSnippet, setIsGeneratingSnippet] = useState(false);
   const prevTicketCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -340,6 +343,23 @@ export default function AgentDashboard() {
     } finally {
       setIsPdfUploading(false);
     }
+  };
+
+  const handleGenerateSnippet = () => {
+    if (!setupCompanyName.trim()) return;
+    setIsGeneratingSnippet(true);
+    fetch(`${API_URL}/api/company/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ company: setupCompanyName.trim() })
+    })
+      .then(res => res.json())
+      .then(data => {
+        const publicUrl = API_URL.replace('5001', '5173');
+        setSetupSnippet(`<script src="${publicUrl}/widget.js" data-company="${data.company}" data-token="${data.token}"></script>`);
+      })
+      .catch(() => setSetupSnippet('Error generating snippet...'))
+      .finally(() => setIsGeneratingSnippet(false));
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -619,6 +639,12 @@ export default function AgentDashboard() {
               className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${activeTab === 'knowledge' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
             >
               Knowledge Base
+            </button>
+            <button 
+              onClick={() => setActiveTab('setup')}
+              className={`px-4 py-1.5 text-sm rounded-md transition-all duration-200 font-medium ${activeTab === 'setup' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+            >
+              Widget Setup
             </button>
           </div>
           <div className="flex items-center gap-3 text-sm font-medium">
@@ -1015,6 +1041,63 @@ export default function AgentDashboard() {
                 ) : (
                   <p className="text-sm text-zinc-400 mt-4">No KB suggestions yet. Collect more AI feedback to generate recommendations.</p>
                 )}
+              </div>
+            </div>
+          ) : activeTab === 'setup' ? (
+            <div className="p-8 max-w-4xl mx-auto w-full animate-in fade-in flex flex-col h-full gap-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-zinc-900 flex items-center gap-2">
+                    <Sparkles className="text-blue-600" /> Widget Embed Setup
+                  </h1>
+                  <p className="text-zinc-500 mt-1">Generate a secure embed code for your company website.</p>
+                </div>
+              </div>
+              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col gap-5">
+                <div>
+                  <label className="block text-sm font-semibold text-zinc-800 mb-1.5">Your Company Name</label>
+                  <p className="text-xs text-zinc-500 mb-3">This name will be matched with the Knowledge Base you create.</p>
+                  <div className="flex gap-3">
+                    <Input 
+                      value={setupCompanyName} 
+                      onChange={e => setSetupCompanyName(e.target.value)} 
+                      placeholder="e.g. Stark Industries" 
+                      className="max-w-sm border-zinc-200 focus-visible:ring-blue-500 text-sm" 
+                    />
+                    <Button 
+                      onClick={handleGenerateSnippet} 
+                      disabled={isGeneratingSnippet || !setupCompanyName.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      {isGeneratingSnippet ? <Loader2 size={16} className="animate-spin mr-2" /> : null}
+                      Generate Embed Snippet
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="mt-2">
+                  <label className="block text-sm font-semibold text-zinc-800 mb-2 flex justify-between items-center">
+                    <span>Generated Code Snippet</span>
+                    {setupSnippet && (
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(setupSnippet)}
+                        className="text-blue-600 text-xs font-bold hover:text-blue-800"
+                      >
+                        Copy to Clipboard
+                      </button>
+                    )}
+                  </label>
+                  <textarea 
+                    readOnly 
+                    value={setupSnippet}
+                    className="w-full text-xs font-mono p-4 rounded-xl border border-zinc-200 bg-slate-800 text-blue-100 h-28 resize-none shadow-inner focus:outline-none placeholder:text-slate-600" 
+                    placeholder="Click 'Generate Embed Snippet' to get your code snippet..."
+                  />
+                  <p className="text-xs text-zinc-500 mt-3 flex items-start gap-1.5 bg-zinc-50 p-2.5 rounded-lg border border-zinc-100">
+                    <span className="text-blue-600 mt-0.5"><Database size={14} /></span>
+                    Place this script tag securely inside the <code>&lt;body&gt;</code> of your website index. It dynamically loads the SmartTicket chatbot pinned to the bottom right corner.
+                  </p>
+                </div>
               </div>
             </div>
           ) : activeTab === 'knowledge' ? (
