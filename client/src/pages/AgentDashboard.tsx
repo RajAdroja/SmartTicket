@@ -7,6 +7,29 @@ import { Badge } from '../components/ui/badge';
 
 const API_URL = 'http://localhost:5001';
 
+function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick(t => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  const ms = Date.now() - new Date(escalatedAt).getTime();
+  const mins = Math.floor(ms / 60_000);
+  const label = mins < 1 ? 'just now' : mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`;
+  const level = mins >= 10 ? 'red' : mins >= 5 ? 'amber' : 'green';
+
+  return (
+    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+      level === 'red'   ? 'bg-rose-50 text-rose-600 border-rose-200' :
+      level === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                          'bg-slate-50 text-slate-400 border-slate-200'
+    }`}>
+      ⏱ {label}
+    </span>
+  );
+}
+
 export default function AgentDashboard() {
   const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
@@ -41,13 +64,6 @@ export default function AgentDashboard() {
 
   // Incoming transfer toast
   const [incomingTransfer, setIncomingTransfer] = useState<{ ticketId: string; fromAgentName: string; note: string } | null>(null);
-
-  // SLA timer — tick every 30s to re-render elapsed times
-  const [, setTimerTick] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setTimerTick(t => t + 1), 30_000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Close shared AudioContext on unmount
   useEffect(() => {
@@ -147,14 +163,6 @@ export default function AgentDashboard() {
     }
   };
 
-  // SLA elapsed time helper
-  const getElapsed = (escalatedAt: Date | string) => {
-    const ms = Date.now() - new Date(escalatedAt).getTime();
-    const mins = Math.floor(ms / 60_000);
-    if (mins < 60) return { label: mins < 1 ? 'just now' : `${mins}m`, level: mins >= 10 ? 'red' : mins >= 5 ? 'amber' : 'green' };
-    const hrs = Math.floor(mins / 60);
-    return { label: `${hrs}h`, level: 'red' };
-  };
 
   const filteredTickets = [...tickets].reverse().filter(ticket => {
     const normalized = normalizeStatus(ticket.status);
@@ -604,18 +612,7 @@ export default function AgentDashboard() {
                           </Badge>
                           {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
                           {/* SLA timer — only on active tickets */}
-                          {!isResolved && (() => {
-                            const { label, level } = getElapsed(ticket.escalatedAt);
-                            return (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-                                level === 'red' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                                level === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                                'bg-slate-50 text-slate-400 border-slate-200'
-                              }`}>
-                                ⏱ {label}
-                              </span>
-                            );
-                          })()}
+                          {!isResolved && <SlaTimer escalatedAt={ticket.escalatedAt} />}
                         </div>
                       </div>
                       <span className="text-xs font-medium text-slate-400 shrink-0">
