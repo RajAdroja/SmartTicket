@@ -9,7 +9,8 @@ import { z } from 'zod';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
-  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent
+  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent,
+  createCannedResponse, getCannedResponses, updateCannedResponse, deleteCannedResponse, incrementCannedResponseUsage
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -380,6 +381,94 @@ app.post('/api/company/register', (req, res) => {
 app.get('/api/company/tokens', (_req, res) => {
   const companies = Object.values(COMPANY_TOKEN_REGISTRY);
   res.json({ companies });
+});
+
+// ============ CANNED RESPONSES ============
+
+/**
+ * POST /api/canned-responses
+ * Create a new canned response
+ */
+app.post('/api/canned-responses', async (req, res) => {
+  const { agentId, title, content, category } = req.body;
+  if (!agentId || !title || !content) {
+    return res.status(400).json({ error: 'agentId, title, and content are required' });
+  }
+  try {
+    const response = await createCannedResponse(agentId, title, content, category || 'General');
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create canned response' });
+  }
+});
+
+/**
+ * GET /api/canned-responses?agentId=X&category=Y
+ * Get all canned responses for an agent
+ */
+app.get('/api/canned-responses', async (req, res) => {
+  const { agentId, category } = req.query;
+  if (!agentId || typeof agentId !== 'string') {
+    return res.status(400).json({ error: 'agentId is required' });
+  }
+  try {
+    const responses = await getCannedResponses(agentId, category as string);
+    res.json(responses);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch canned responses' });
+  }
+});
+
+/**
+ * PUT /api/canned-responses/:id
+ * Update a canned response
+ */
+app.put('/api/canned-responses/:id', async (req, res) => {
+  const { id } = req.params;
+  const { title, content, category, isFavorite } = req.body;
+  try {
+    const response = await updateCannedResponse(id, { title, content, category, isFavorite });
+    if (!response) {
+      return res.status(404).json({ error: 'Canned response not found' });
+    }
+    res.json(response);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update canned response' });
+  }
+});
+
+/**
+ * DELETE /api/canned-responses/:id
+ * Delete a canned response
+ */
+app.delete('/api/canned-responses/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const deleted = await deleteCannedResponse(id);
+    if (!deleted) {
+      return res.status(404).json({ error: 'Canned response not found' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete canned response' });
+  }
+});
+
+/**
+ * POST /api/canned-responses/:id/use
+ * Increment usage count for a canned response
+ */
+app.post('/api/canned-responses/:id/use', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const response = await incrementCannedResponseUsage(id);
+    if (!response) {
+      return res.status(404).json({ error: 'Canned response not found' });
+    }
+    res.json({ usageCount: response.usageCount });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to increment usage count' });
+  }
 });
 
 app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {

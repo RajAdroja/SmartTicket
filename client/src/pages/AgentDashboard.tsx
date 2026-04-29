@@ -120,6 +120,13 @@ export default function AgentDashboard() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
+  // Canned Responses state
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [cannedResponses, setCannedResponses] = useState<any[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCategory, setTemplateCategory] = useState('all');
+
   // Brief skeleton on ticket switch
   useEffect(() => {
     if (!selectedTicketId) return;
@@ -143,6 +150,18 @@ export default function AgentDashboard() {
   useEffect(() => {
     return () => { audioCtxRef.current?.close(); };
   }, []);
+
+  // Fetch canned responses when templates panel opens
+  useEffect(() => {
+    if (showTemplates) {
+      setIsLoadingTemplates(true);
+      fetch(`${API_URL}/api/canned-responses?agentId=${agentId}`)
+        .then(res => res.json())
+        .then(data => setCannedResponses(data || []))
+        .catch(err => console.error('Failed to fetch templates:', err))
+        .finally(() => setIsLoadingTemplates(false));
+    }
+  }, [showTemplates, agentId]);
 
   // Unread counts per ticket — track last-viewed message count
   const lastViewedRef = useRef<Record<string, number>>({});
@@ -459,6 +478,13 @@ export default function AgentDashboard() {
     const contextLine = `[Context] ${contextBits.join(' | ')}`;
     setReply(prev => prev ? `${prev}\n${contextLine}` : contextLine);
     setIsInternal(true);
+  };
+
+  const insertTemplate = (template: any) => {
+    setReply(prev => prev ? `${prev}\n${template.content}` : template.content);
+    setShowTemplates(false);
+    // Increment usage count
+    fetch(`${API_URL}/api/canned-responses/${template._id}/use`, { method: 'POST' }).catch(() => {});
   };
 
   return (
@@ -1542,6 +1568,16 @@ export default function AgentDashboard() {
                     <div className="flex items-center gap-2 shrink-0 bg-slate-50 p-1 rounded-xl border border-slate-200">
                       <button
                         type="button"
+                        onClick={() => setShowTemplates(!showTemplates)}
+                        className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
+                          showTemplates ? 'bg-blue-100 text-blue-900 shadow-sm border border-blue-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        <FileText size={16} className={showTemplates ? "" : "opacity-50"} />
+                        Templates
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setIsInternal(!isInternal)}
                         className={`flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-sm font-bold transition-all ${
                           isInternal ? 'bg-amber-100 text-amber-900 shadow-sm border border-amber-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
@@ -1563,6 +1599,65 @@ export default function AgentDashboard() {
                       <Send size={18} className="mr-2" /> {isInternal ? 'Save' : 'Send'}
                     </Button>
                   </form>
+
+                  {/* Templates Panel */}
+                  {showTemplates && (
+                    <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-96 overflow-hidden flex flex-col">
+                      <div className="p-3 border-b border-slate-200 bg-slate-50 flex flex-col gap-2">
+                        <input
+                          type="text"
+                          placeholder="Search templates..."
+                          value={templateSearch}
+                          onChange={(e) => setTemplateSearch(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <select
+                          value={templateCategory}
+                          onChange={(e) => setTemplateCategory(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="all">All Categories</option>
+                          {Array.from(new Set(cannedResponses.map(r => r.category))).map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="overflow-y-auto flex-1">
+                        {isLoadingTemplates ? (
+                          <div className="p-4 text-center text-slate-500 text-sm">Loading templates...</div>
+                        ) : cannedResponses.length === 0 ? (
+                          <div className="p-4 text-center text-slate-500 text-sm">No templates yet. Save your first response!</div>
+                        ) : (
+                          cannedResponses
+                            .filter(r => (templateCategory === 'all' || r.category === templateCategory) && r.title.toLowerCase().includes(templateSearch.toLowerCase()))
+                            .map(response => (
+                              <button
+                                key={response._id}
+                                type="button"
+                                onClick={() => insertTemplate(response)}
+                                className="w-full px-4 py-3 text-left border-b border-slate-100 hover:bg-blue-50 transition-colors last:border-b-0"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-slate-900">{response.title}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5 truncate">{response.content.substring(0, 50)}...</div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge variant="outline" className="text-[10px] px-1.5 h-4 bg-slate-50 text-slate-600 border-slate-200">{response.category}</Badge>
+                                      {response.usageCount > 0 && (
+                                        <span className="text-[10px] text-slate-400">Used {response.usageCount}x</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {response.isFavorite && (
+                                    <Star size={14} className="text-amber-500 fill-amber-500 shrink-0 mt-1" />
+                                  )}
+                                </div>
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="p-6 bg-slate-50 border-t border-slate-200 text-center flex flex-col items-center justify-center gap-2 relative z-20">

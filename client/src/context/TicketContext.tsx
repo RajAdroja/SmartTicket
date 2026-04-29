@@ -54,6 +54,18 @@ export interface OnlineAgent {
   ticketCount?: number;
 }
 
+export interface CannedResponse {
+  _id: string;
+  agentId: string;
+  title: string;
+  content: string;
+  category: string;
+  isFavorite: boolean;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TransferNotification {
   ticketId: string;
   fromAgentName: string;

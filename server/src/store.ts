@@ -94,6 +94,17 @@ export const TicketModel = mongoose.model('Ticket', TicketSchema);
 export const MetricsModel = mongoose.model('Metrics', MetricsSchema);
 export const KbModel = mongoose.model('Kb', KbSchema);
 
+const CannedResponseSchema = new Schema({
+  agentId: { type: String, required: true },
+  title: { type: String, required: true },
+  content: { type: String, required: true },
+  category: { type: String, default: 'General' },
+  isFavorite: { type: Boolean, default: false },
+  usageCount: { type: Number, default: 0 },
+}, { timestamps: true });
+
+export const CannedResponseModel = mongoose.model('CannedResponse', CannedResponseSchema);
+
 const FeedbackSchema = new Schema({
   sessionId: { type: String, required: true, unique: true },
   ticketId: { type: String, default: null },
@@ -334,4 +345,48 @@ export const getFeedbackAnalytics = async () => {
     topNegativeReasons,
     kbImprovementSuggestions,
   };
+};
+
+// Canned Responses CRUD
+
+export const createCannedResponse = async (agentId: string, title: string, content: string, category: string = 'General') => {
+  const response = await CannedResponseModel.create({
+    agentId,
+    title,
+    content,
+    category,
+    isFavorite: false,
+    usageCount: 0,
+  });
+  return response.toObject();
+};
+
+export const getCannedResponses = async (agentId: string, category?: string) => {
+  const query: any = { agentId };
+  if (category && category !== 'all') {
+    query.category = category;
+  }
+  const responses = await CannedResponseModel.find(query)
+    .sort({ isFavorite: -1, usageCount: -1, createdAt: -1 })
+    .lean();
+  return responses;
+};
+
+export const updateCannedResponse = async (id: string, updates: { title?: string; content?: string; category?: string; isFavorite?: boolean }) => {
+  const response = await CannedResponseModel.findByIdAndUpdate(id, updates, { new: true }).lean();
+  return response;
+};
+
+export const deleteCannedResponse = async (id: string) => {
+  const result = await CannedResponseModel.deleteOne({ _id: id });
+  return result.deletedCount > 0;
+};
+
+export const incrementCannedResponseUsage = async (id: string) => {
+  const response = await CannedResponseModel.findByIdAndUpdate(
+    id,
+    { $inc: { usageCount: 1 } },
+    { new: true }
+  ).lean();
+  return response;
 };
