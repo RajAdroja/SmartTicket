@@ -342,7 +342,7 @@ export default function AgentDashboard() {
                     <button
                       key={agent.agentId}
                       onClick={() => setTransferTargetId(agent.agentId)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
+                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all bg-white ${
                         transferTargetId === agent.agentId
                           ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-100'
                           : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
@@ -384,7 +384,7 @@ export default function AgentDashboard() {
                 onChange={e => setTransferNote(e.target.value)}
                 placeholder="e.g. Customer needs billing specialist, already verified account..."
                 rows={3}
-                className="w-full p-3 rounded-xl border border-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-700 placeholder:text-slate-400"
+                className="w-full p-3 rounded-xl border border-slate-200 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-slate-700 bg-white placeholder:text-slate-400"
               />
             </div>
 
