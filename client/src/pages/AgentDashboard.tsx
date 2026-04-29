@@ -549,16 +549,36 @@ export default function AgentDashboard() {
               Knowledge Base
             </button>
           </div>
-          <div className="flex items-center gap-4 text-sm font-medium">
-            <select
-              value={agentStatus}
-              onChange={(e) => setAgentStatus(e.target.value as 'available' | 'busy' | 'away')}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition-colors"
-            >
-              <option value="available" className="bg-slate-900">🟢 Available</option>
-              <option value="busy" className="bg-slate-900">🟡 Busy</option>
-              <option value="away" className="bg-slate-900">🔴 Away</option>
-            </select>
+          <div className="flex items-center gap-3 text-sm font-medium">
+            {/* Status pill — custom styled dropdown */}
+            <div className="relative">
+              <select
+                value={agentStatus}
+                onChange={(e) => setAgentStatus(e.target.value as 'available' | 'busy' | 'away')}
+                className="appearance-none pl-7 pr-7 py-1.5 rounded-full text-xs font-bold cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-slate-900 border transition-colors duration-200 bg-transparent
+                  focus:ring-blue-500
+                "
+                style={{
+                  borderColor: agentStatus === 'available' ? '#34d399' : agentStatus === 'busy' ? '#fbbf24' : '#f87171',
+                  color:       agentStatus === 'available' ? '#34d399' : agentStatus === 'busy' ? '#fbbf24' : '#f87171',
+                }}
+              >
+                <option value="available" className="bg-slate-900 text-white">Available</option>
+                <option value="busy"      className="bg-slate-900 text-white">Busy</option>
+                <option value="away"      className="bg-slate-900 text-white">Away</option>
+              </select>
+              {/* Status dot — left */}
+              <span className={`pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full ${
+                agentStatus === 'available' ? 'bg-emerald-400' :
+                agentStatus === 'busy'      ? 'bg-amber-400' :
+                                              'bg-red-400'
+              }`} />
+              {/* Chevron — right */}
+              <svg className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 opacity-60" style={{ color: agentStatus === 'available' ? '#34d399' : agentStatus === 'busy' ? '#fbbf24' : '#f87171' }} viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </div>
+
             <button
               onClick={() => setSoundEnabled(p => !p)}
               className="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800"
@@ -566,13 +586,6 @@ export default function AgentDashboard() {
             >
               {soundEnabled ? <Volume2 size={18} /> : <VolumeX size={18} />}
             </button>
-            <div className="flex items-center gap-2 border-l border-slate-700 pl-4 h-8">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-              <span className="text-slate-200">Online</span>
-            </div>
           </div>
         </div>
       </header>
@@ -580,12 +593,25 @@ export default function AgentDashboard() {
       <main className="flex-1 flex overflow-hidden">
         {}
         <div className="w-[340px] bg-white border-r border-slate-200 flex flex-col z-10 shrink-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] relative">
-          <div className="p-5 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/50">
+          <div className="p-4 border-b border-slate-100 flex justify-between items-center shrink-0 bg-slate-50/50">
             <h2 className="font-semibold text-slate-800 text-xs tracking-wider flex items-center gap-2 uppercase">
               <Users size={14} className="text-blue-600" /> Inbox
             </h2>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Badge className="bg-blue-50 text-blue-700 hover:bg-blue-100 shadow-none border border-blue-200/50 text-[10px] py-0">{activeTickets.length} Active</Badge>
+              {/* Agent's own status — visible while working the queue */}
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                agentStatus === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                agentStatus === 'busy'      ? 'bg-amber-50  text-amber-700  border-amber-200'  :
+                                              'bg-red-50    text-red-600    border-red-200'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${
+                  agentStatus === 'available' ? 'bg-emerald-500' :
+                  agentStatus === 'busy'      ? 'bg-amber-500' :
+                                                'bg-red-500'
+                }`} />
+                {agentStatus === 'available' ? 'Available' : agentStatus === 'busy' ? 'Busy' : 'Away'}
+              </span>
             </div>
           </div>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col p-3 gap-2 bg-slate-50/50">
