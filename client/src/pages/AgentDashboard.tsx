@@ -21,6 +21,24 @@ function formatMsgTime(createdAt?: string): string {
   return `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
 }
 
+function escalationReasonLabel(reason?: Ticket['escalationReason']): string {
+  switch (reason) {
+    case 'missing_kb_info': return 'KB Gap';
+    case 'sensitive_account_action': return 'Sensitive Action';
+    case 'user_requested_human': return 'User Requested Human';
+    case 'frustration_detected': return 'Frustration Detected';
+    case 'low_confidence': return 'Low Confidence';
+    default: return 'No Escalation Signal';
+  }
+}
+
+function confidenceBadgeClass(label?: Ticket['lastAiConfidenceLabel']): string {
+  if (label === 'high') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (label === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200';
+  if (label === 'low') return 'bg-rose-50 text-rose-700 border-rose-200';
+  return 'bg-slate-100 text-slate-500 border-slate-200';
+}
+
 // SLA thresholds: < 30 min = ok, 30–60 min = approaching, > 60 min = breached
 function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
   const [, tick] = useState(0);
@@ -75,6 +93,7 @@ export default function AgentDashboard() {
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'pending' | 'on-hold' | 'resolved'>('all');
   const [ticketCategoryFilter, setTicketCategoryFilter] = useState<string>('all');
+  const [ticketEscalationFilter, setTicketEscalationFilter] = useState<'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human'>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [selectedKbCompany, setSelectedKbCompany] = useState('global');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
@@ -209,6 +228,10 @@ export default function AgentDashboard() {
     }
 
     if (ticketCategoryFilter !== 'all' && ticket.tag !== ticketCategoryFilter) {
+      return false;
+    }
+
+    if (ticketEscalationFilter !== 'all' && ticket.escalationReason !== ticketEscalationFilter) {
       return false;
     }
 
@@ -351,14 +374,35 @@ export default function AgentDashboard() {
 
   const handleTransferSubmit = () => {
     if (!selectedTicketId || !transferTargetId) return;
+    const selected = tickets.find(t => t.id === selectedTicketId);
     const targetAgent = onlineAgents.find(a => a.agentId === transferTargetId);
-    transferTicket(selectedTicketId, transferTargetId, transferNote.trim());
+    const contextBits = [
+      selected?.lastAiConfidenceLabel ? `AI confidence: ${selected.lastAiConfidenceLabel}` : '',
+      selected?.escalationReason && selected.escalationReason !== 'none' ? `Escalation reason: ${escalationReasonLabel(selected.escalationReason)}` : '',
+      selected?.summary ? `Handoff summary: ${selected.summary}` : '',
+    ].filter(Boolean);
+    const contextNote = contextBits.length ? `[Context] ${contextBits.join(' | ')}` : '';
+    const finalNote = [transferNote.trim(), contextNote].filter(Boolean).join('\n');
+    transferTicket(selectedTicketId, transferTargetId, finalNote);
     setShowTransferModal(false);
     setTransferTargetId('');
     setTransferNote('');
     setSelectedTicketId(null);
     setTransferSuccess({ toAgentName: targetAgent?.name ?? 'the agent' });
     setTimeout(() => setTransferSuccess(null), 5000);
+  };
+
+  const insertEscalationContext = () => {
+    if (!selectedTicket) return;
+    const contextBits = [
+      selectedTicket.lastAiConfidenceLabel ? `AI confidence: ${selectedTicket.lastAiConfidenceLabel}` : '',
+      selectedTicket.escalationReason && selectedTicket.escalationReason !== 'none' ? `Escalation reason: ${escalationReasonLabel(selectedTicket.escalationReason)}` : '',
+      selectedTicket.summary ? `Summary: ${selectedTicket.summary}` : '',
+    ].filter(Boolean);
+    if (!contextBits.length) return;
+    const contextLine = `[Context] ${contextBits.join(' | ')}`;
+    setReply(prev => prev ? `${prev}\n${contextLine}` : contextLine);
+    setIsInternal(true);
   };
 
   return (
@@ -633,6 +677,16 @@ export default function AgentDashboard() {
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
                 </select>
+                <select
+                  value={ticketEscalationFilter}
+                  onChange={e => setTicketEscalationFilter(e.target.value as 'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human')}
+                  className="w-[130px] text-xs border border-slate-200 rounded-md bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All Escalations</option>
+                  <option value="low_confidence">Low Confidence</option>
+                  <option value="sensitive_account_action">Sensitive Action</option>
+                  <option value="user_requested_human">User Requested</option>
+                </select>
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {['all', 'open', 'pending', 'on-hold', 'resolved'].map((status) => (
@@ -708,6 +762,16 @@ export default function AgentDashboard() {
                             {statusLabel(ticket.status)}
                           </Badge>
                           {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
+                          {ticket.lastAiConfidenceLabel && (
+                            <Badge variant="outline" className={`text-[9px] py-0 h-4 border ${confidenceBadgeClass(ticket.lastAiConfidenceLabel)}`}>
+                              AI {ticket.lastAiConfidenceLabel}
+                            </Badge>
+                          )}
+                          {ticket.escalationReason && ticket.escalationReason !== 'none' && (
+                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-violet-700 bg-violet-50 border-violet-200">
+                              {escalationReasonLabel(ticket.escalationReason)}
+                            </Badge>
+                          )}
                           {/* SLA timer — only on active tickets */}
                           {!isResolved && <SlaTimer escalatedAt={ticket.escalatedAt} />}
                         </div>
@@ -950,6 +1014,17 @@ export default function AgentDashboard() {
                       {selectedTicket.customerName}
                       {selectedTicket.tag && <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">{selectedTicket.tag}</Badge>}
                       <Badge variant="secondary" className={`text-[11px] py-1 h-6 rounded-full ${statusBadgeClass(selectedTicket.status)} ml-2`}>{statusLabel(selectedTicket.status)}</Badge>
+                      {selectedTicket.lastAiConfidenceLabel && (
+                        <Badge variant="outline" className={`text-[11px] py-1 h-6 rounded-full border ${confidenceBadgeClass(selectedTicket.lastAiConfidenceLabel)}`}>
+                          AI {selectedTicket.lastAiConfidenceLabel}
+                          {typeof selectedTicket.lastAiConfidenceScore === 'number' ? ` (${selectedTicket.lastAiConfidenceScore})` : ''}
+                        </Badge>
+                      )}
+                      {selectedTicket.escalationReason && selectedTicket.escalationReason !== 'none' && (
+                        <Badge variant="outline" className="text-[11px] py-1 h-6 rounded-full text-violet-700 bg-violet-50 border-violet-200">
+                          {escalationReasonLabel(selectedTicket.escalationReason)}
+                        </Badge>
+                      )}
                     </h2>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -991,6 +1066,11 @@ export default function AgentDashboard() {
                       <div className="text-sm text-slate-700 leading-relaxed pt-0.5">
                         <span className="font-semibold text-slate-900 mr-2">AI Context:</span>
                         {selectedTicket.summary}
+                        {selectedTicket.escalationReason && selectedTicket.escalationReason !== 'none' && (
+                          <span className="block text-xs mt-1.5 text-violet-700">
+                            Escalation reason: {escalationReasonLabel(selectedTicket.escalationReason)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1148,6 +1228,14 @@ export default function AgentDashboard() {
                       >
                         <EyeOff size={16} className={isInternal ? "" : "opacity-50"} />
                         Internal Note
+                      </button>
+                      <button
+                        type="button"
+                        onClick={insertEscalationContext}
+                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-50 transition-all"
+                        title="Insert AI confidence and escalation context"
+                      >
+                        + AI Context
                       </button>
                     </div>
                     <Button type="submit" disabled={!reply.trim() && !attachment} className={`h-12 px-6 rounded-xl font-bold transition-all shadow-sm ${isInternal ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}>
