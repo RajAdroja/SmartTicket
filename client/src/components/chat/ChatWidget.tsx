@@ -34,6 +34,23 @@ function getTriggerSourceFromReason(reason?: ChatApiResponseContract['decision']
   return 'model_signal';
 }
 
+function getEscalationReasonCopy(reason?: ChatApiResponseContract['decision']['escalationReason']): string {
+  switch (reason) {
+    case 'user_requested_human':
+      return 'You asked for a human agent, so I will connect you now.';
+    case 'sensitive_account_action':
+      return 'This request involves account-sensitive actions and needs a human agent.';
+    case 'frustration_detected':
+      return 'I can tell this has been frustrating, so I will bring in a human agent.';
+    case 'missing_kb_info':
+      return 'I do not have enough verified information in my knowledge base, so I will escalate this.';
+    case 'low_confidence':
+      return 'I am not fully confident in this answer, so I recommend a human handoff.';
+    default:
+      return 'I will connect you to a human agent for faster and safer support.';
+  }
+}
+
 export default function ChatWidget() {
   const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount, socket } = useTickets();
   
@@ -54,6 +71,7 @@ export default function ChatWidget() {
   const [hoveredStar, setHoveredStar] = useState(0);
   const [selectedRating, setSelectedRating] = useState(0);
   const [attachment, setAttachment] = useState<string | null>(null);
+  const [latestDecision, setLatestDecision] = useState<ChatApiResponseContract['decision'] | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevAgentMsgCountRef = useRef(0);
@@ -188,6 +206,7 @@ export default function ChatWidget() {
         body: JSON.stringify({ messages: newHistory, company: MOCK_CUSTOMER_COMPANY })
       });
       const data = (await response.json()) as ChatApiResponseContract;
+      setLatestDecision(data.decision || null);
       
       const botMessage: Message = { id: Date.now().toString(), sender: 'bot', text: data.reply, createdAt: new Date().toISOString() };
       const updatedHistory = [...newHistory, botMessage];
@@ -196,6 +215,12 @@ export default function ChatWidget() {
       if (data.suggestEscalation) {
         const newId = `ticket-${Date.now()}`;
         setTicketId(newId);
+        const escalationReasonMessage: Message = {
+          id: `escalation-reason-${Date.now()}`,
+          sender: 'bot',
+          text: getEscalationReasonCopy(data.decision?.escalationReason),
+          createdAt: new Date().toISOString(),
+        };
         
         const escalationMsg: Message = {
           id: (Date.now() + 1).toString(),
@@ -204,7 +229,7 @@ export default function ChatWidget() {
           createdAt: new Date().toISOString(),
         };
         
-        const finalHistory = [...updatedHistory, escalationMsg];
+        const finalHistory = [...updatedHistory, escalationReasonMessage, escalationMsg];
         setMessages(finalHistory);
         const explainability: EscalationExplainability = {
           lastAiConfidenceScore: data.decision?.confidenceScore,
@@ -214,7 +239,7 @@ export default function ChatWidget() {
         };
         
         joinTicketRoom(newId);
-        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
+        escalateTicket(newId, "Customer", finalHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
       } else if (data.suggestResolution) {
         markAiResolved();
         localStorage.removeItem('smartTicket_messages');
@@ -290,6 +315,7 @@ export default function ChatWidget() {
     localStorage.removeItem('smartTicket_isResolved');
     setTicketId(null);
     setIsResolved(false);
+    setLatestDecision(null);
     setHasSubmittedCsat(false);
     setMessages([{ id: '1', sender: 'bot', text: 'Hi there! I am the SmartTicket AI assistant. How can I help you today?' }]);
   };
@@ -590,9 +616,32 @@ export default function ChatWidget() {
               ) : (
                 <>
                   {!ticketId ? (
-                    <Button variant="outlined" fullWidth sx={{ mb: 1.25 }} onClick={handleEscalate} startIcon={<PhoneCall size={14} />}>
-                      Talk to Human
-                    </Button>
+                    <>
+                      {latestDecision && latestDecision.confidenceLabel !== 'high' && (
+                        <Box
+                          sx={(theme) => ({
+                            mb: 1.25,
+                            px: 1.25,
+                            py: 1,
+                            borderRadius: 1.5,
+                            border: `1px solid ${theme.palette.divider}`,
+                            bgcolor: latestDecision.confidenceLabel === 'low' ? 'warning.light' : 'background.default',
+                          })}
+                        >
+                          <Typography variant="caption" sx={{ display: 'block', fontWeight: 700 }}>
+                            AI confidence: {latestDecision.confidenceLabel === 'low' ? 'Low' : 'Medium'}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {latestDecision.confidenceLabel === 'low'
+                              ? 'A human handoff is recommended for accuracy.'
+                              : 'You can continue with AI or switch to a human agent now.'}
+                          </Typography>
+                        </Box>
+                      )}
+                      <Button variant="outlined" fullWidth sx={{ mb: 1.25 }} onClick={handleEscalate} startIcon={<PhoneCall size={14} />}>
+                        Talk to Human
+                      </Button>
+                    </>
                   ) : (
                     <Button variant="outlined" color="error" fullWidth sx={{ mb: 1.25 }} onClick={handleEndChat} startIcon={<X size={14} />}>
                       End Chat
