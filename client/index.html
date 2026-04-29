@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart Ticket</title>
+    <!-- Inline script: runs BEFORE React, prevents dark canvas on /widget route -->
+    <script>
+      if (window.location.pathname.startsWith('/widget')) {
+        document.documentElement.style.setProperty('background', 'transparent', 'important');
+        document.documentElement.style.setProperty('background-color', 'transparent', 'important');
+        document.documentElement.style.setProperty('color-scheme', 'light');
+        var s = document.createElement('style');
+        s.textContent = 'html, body, #root { background: transparent !important; background-color: transparent !important; }';
+        document.head.appendChild(s);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

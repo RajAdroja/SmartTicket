@@ -106,8 +106,9 @@ export default function AgentDashboard() {
   const [ticketCategoryFilter, setTicketCategoryFilter] = useState<string>('all');
   const [ticketEscalationFilter, setTicketEscalationFilter] = useState<'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human'>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
-  const [selectedKbCompany, setSelectedKbCompany] = useState('global');
+  const [selectedKbCompany, setSelectedKbCompany] = useState('');
   const [feedbackAnalytics, setFeedbackAnalytics] = useState<FeedbackAnalytics | null>(null);
+  const [analyticsCompanyFilter, setAnalyticsCompanyFilter] = useState<string>('all');
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
   const prevTicketCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -298,6 +299,13 @@ export default function AgentDashboard() {
       .then(data => setFeedbackAnalytics(data))
       .catch(() => setFeedbackAnalytics(null));
   }, [activeTab]);
+
+  // Auto-select first available company for KB editor when tickets load
+  useEffect(() => {
+    if (selectedKbCompany) return; // already selected
+    const first = Array.from(new Set(tickets.map(t => t.userProfile?.company).filter(Boolean)))[0];
+    if (first) setSelectedKbCompany(first);
+  }, [tickets]);
 
   const handleSaveKb = () => {
     setIsSavingKb(true);
@@ -777,6 +785,13 @@ export default function AgentDashboard() {
                             </span>
                           )}
                         </div>
+                        {/* Company source badge */}
+                        {ticket.userProfile?.company && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200 w-fit">
+                            <span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block shrink-0"></span>
+                            {ticket.userProfile.company}
+                          </span>
+                        )}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge variant="secondary" className={`text-[9px] py-0 h-4 border ${statusBadgeClass(ticket.status)}`}>
                             {statusLabel(ticket.status)}
@@ -814,95 +829,174 @@ export default function AgentDashboard() {
         <div className="flex-1 flex flex-col bg-slate-50 overflow-y-auto">
           {activeTab === 'analytics' ? (
             <div className="p-8 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-zinc-900">Platform Analytics</h1>
-                <p className="text-zinc-500">Real-time metrics for your SmartTicket deployment.</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
-                    <MessageSquare className="text-indigo-600" size={20} />
-                  </div>
-                  <span className="text-zinc-500 text-sm font-medium">Total Interactions</span>
-                  <span className="text-3xl font-bold text-zinc-900 mt-1">{metrics.aiResolved + metrics.escalated}</span>
+              {/* Header */}
+              <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-zinc-900">Platform Analytics</h1>
+                  <p className="text-zinc-500">Real-time metrics for your SmartTicket deployment.</p>
                 </div>
-
-                <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mb-4">
-                    <Bot className="text-emerald-600" size={20} />
-                  </div>
-                  <span className="text-zinc-500 text-sm font-medium">Resolved by AI Only</span>
-                  <span className="text-3xl font-bold text-zinc-900 mt-1">{metrics.aiResolved}</span>
-                  <span className="text-xs text-emerald-600 font-medium mt-2 bg-emerald-50 px-2 py-1 rounded-md self-start">
-                    {metrics.aiResolved + metrics.escalated > 0 ? Math.round((metrics.aiResolved / (metrics.aiResolved + metrics.escalated)) * 100) : 0}% Deflection Rate
-                  </span>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center mb-4">
-                    <Users className="text-amber-600" size={20} />
-                  </div>
-                  <span className="text-zinc-500 text-sm font-medium">Escalated to Human</span>
-                  <span className="text-3xl font-bold text-zinc-900 mt-1">{metrics.escalated}</span>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
-                    <CheckCircle className="text-blue-600" size={20} />
-                  </div>
-                  <span className="text-zinc-500 text-sm font-medium">Resolved by Human</span>
-                  <span className="text-3xl font-bold text-zinc-900 mt-1">{metrics.humanResolved}</span>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
-                  <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center mb-4">
-                    <Star className="text-yellow-600" size={20} />
-                  </div>
-                  <span className="text-zinc-500 text-sm font-medium">Avg CSAT Score</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-3xl font-bold text-zinc-900">
-                      {metrics.csatCount > 0 ? (metrics.totalCsatScore / metrics.csatCount).toFixed(1) : 'N/A'}
-                    </span>
-                    {metrics.csatCount > 0 && <Star size={16} className="text-yellow-500 fill-current" />}
-                  </div>
-                  <span className="text-xs text-zinc-400 font-medium mt-2">
-                    Based on {metrics.csatCount} reviews
-                  </span>
+                {/* Company filter */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Filter by Company</label>
+                  <select
+                    value={analyticsCompanyFilter}
+                    onChange={e => setAnalyticsCompanyFilter(e.target.value)}
+                    className="text-sm border border-zinc-200 rounded-lg px-3 py-1.5 bg-white text-zinc-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Companies</option>
+                    {Array.from(new Set(tickets.map(t => t.userProfile?.company).filter(Boolean))).sort().map(c => (
+                      <option key={c} value={c!}>{c}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Helpful Rate</p>
-                  <p className="text-2xl font-bold text-zinc-900 mt-2">
-                    {feedbackAnalytics ? `${Math.round(feedbackAnalytics.helpfulRate * 100)}%` : 'N/A'}
-                  </p>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    {feedbackAnalytics ? `${feedbackAnalytics.helpfulCount}/${feedbackAnalytics.totalFeedback} marked helpful` : 'No feedback submitted yet'}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Low Confidence Helpful Rate</p>
-                  <p className="text-2xl font-bold text-zinc-900 mt-2">
-                    {feedbackAnalytics ? `${Math.round(feedbackAnalytics.lowConfidenceHelpfulRate * 100)}%` : 'N/A'}
-                  </p>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    {feedbackAnalytics ? `Sample size: ${feedbackAnalytics.lowConfidenceSampleSize}` : 'No low-confidence samples yet'}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
-                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Top Negative Signals</p>
-                  <p className="text-2xl font-bold text-zinc-900 mt-2">
-                    {feedbackAnalytics ? feedbackAnalytics.topNegativeReasons.length : 0}
-                  </p>
-                  <p className="text-xs text-zinc-400 mt-1">
-                    {feedbackAnalytics?.topNegativeReasons?.[0]
-                      ? `${feedbackAnalytics.topNegativeReasons[0].reason.replaceAll('_', ' ')} (${feedbackAnalytics.topNegativeReasons[0].count})`
-                      : 'No negative signals yet'}
-                  </p>
-                </div>
-              </div>
+              {/* Company breakdown bar chart */}
+              {(() => {
+                const companyMap: Record<string, { total: number; escalated: number; resolved: number }> = {};
+                tickets.forEach(t => {
+                  const co = t.userProfile?.company || 'Direct / Unknown';
+                  if (!companyMap[co]) companyMap[co] = { total: 0, escalated: 0, resolved: 0 };
+                  companyMap[co].total++;
+                  if (t.status === 'resolved') companyMap[co].resolved++;
+                  else companyMap[co].escalated++;
+                });
+                const companies = Object.entries(companyMap).sort((a, b) => b[1].total - a[1].total);
+                const maxTotal = Math.max(...companies.map(([, v]) => v.total), 1);
+                return companies.length > 0 ? (
+                  <div className="mb-6 bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                    <h2 className="text-base font-semibold text-zinc-900 mb-4">Tickets by Company</h2>
+                    <div className="space-y-3">
+                      {companies.map(([co, stats]) => (
+                        <div key={co}
+                          className={`cursor-pointer rounded-lg px-1 py-0.5 transition-colors ${
+                            analyticsCompanyFilter === co ? 'ring-2 ring-blue-400' : 'hover:bg-zinc-50'
+                          }`}
+                          onClick={() => setAnalyticsCompanyFilter(analyticsCompanyFilter === co ? 'all' : co)}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block"></span>
+                              <span className="text-sm font-medium text-zinc-800">{co}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-zinc-500">{stats.total} ticket{stats.total !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div className="w-full bg-zinc-100 rounded-full h-2 flex overflow-hidden">
+                            <div
+                              className="bg-teal-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${(stats.total / maxTotal) * 100}%` }}
+                            />
+                          </div>
+                          <div className="flex gap-3 mt-1">
+                            <span className="text-[10px] text-zinc-400">{stats.resolved} resolved</span>
+                            <span className="text-[10px] text-zinc-400">{stats.escalated} escalated</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
+              {/* Filtered metrics — respects analyticsCompanyFilter */}
+              {(() => {
+                const filtered = analyticsCompanyFilter === 'all'
+                  ? tickets
+                  : tickets.filter(t => (t.userProfile?.company || 'Direct / Unknown') === analyticsCompanyFilter);
+                const filteredAiResolved = analyticsCompanyFilter === 'all' ? metrics.aiResolved : filtered.filter(t => t.status === 'resolved' && !t.escalationReason).length;
+                const filteredEscalated = analyticsCompanyFilter === 'all' ? metrics.escalated : filtered.filter(t => t.escalationReason && t.escalationReason !== 'none').length;
+                const filteredHumanResolved = analyticsCompanyFilter === 'all' ? metrics.humanResolved : filtered.filter(t => t.status === 'resolved' && t.escalationReason && t.escalationReason !== 'none').length;
+                const totalFiltered = analyticsCompanyFilter === 'all' ? (metrics.aiResolved + metrics.escalated) : filtered.length;
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
+                        <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mb-4">
+                          <MessageSquare className="text-indigo-600" size={20} />
+                        </div>
+                        <span className="text-zinc-500 text-sm font-medium">Total Interactions</span>
+                        <span className="text-3xl font-bold text-zinc-900 mt-1">{totalFiltered}</span>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
+                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mb-4">
+                          <Bot className="text-emerald-600" size={20} />
+                        </div>
+                        <span className="text-zinc-500 text-sm font-medium">Resolved by AI Only</span>
+                        <span className="text-3xl font-bold text-zinc-900 mt-1">{filteredAiResolved}</span>
+                        <span className="text-xs text-emerald-600 font-medium mt-2 bg-emerald-50 px-2 py-1 rounded-md self-start">
+                          {totalFiltered > 0 ? Math.round((filteredAiResolved / totalFiltered) * 100) : 0}% Deflection Rate
+                        </span>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
+                        <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center mb-4">
+                          <Users className="text-amber-600" size={20} />
+                        </div>
+                        <span className="text-zinc-500 text-sm font-medium">Escalated to Human</span>
+                        <span className="text-3xl font-bold text-zinc-900 mt-1">{filteredEscalated}</span>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
+                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mb-4">
+                          <CheckCircle className="text-blue-600" size={20} />
+                        </div>
+                        <span className="text-zinc-500 text-sm font-medium">Resolved by Human</span>
+                        <span className="text-3xl font-bold text-zinc-900 mt-1">{filteredHumanResolved}</span>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm flex flex-col">
+                        <div className="w-10 h-10 rounded-lg bg-yellow-100 flex items-center justify-center mb-4">
+                          <Star className="text-yellow-600" size={20} />
+                        </div>
+                        <span className="text-zinc-500 text-sm font-medium">Avg CSAT Score</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-3xl font-bold text-zinc-900">
+                            {metrics.csatCount > 0 ? (metrics.totalCsatScore / metrics.csatCount).toFixed(1) : 'N/A'}
+                          </span>
+                          {metrics.csatCount > 0 && <Star size={16} className="text-yellow-500 fill-current" />}
+                        </div>
+                        <span className="text-xs text-zinc-400 font-medium mt-2">
+                          Based on {metrics.csatCount} reviews
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                      <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Helpful Rate</p>
+                        <p className="text-2xl font-bold text-zinc-900 mt-2">
+                          {feedbackAnalytics ? `${Math.round(feedbackAnalytics.helpfulRate * 100)}%` : 'N/A'}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {feedbackAnalytics ? `${feedbackAnalytics.helpfulCount}/${feedbackAnalytics.totalFeedback} marked helpful` : 'No feedback submitted yet'}
+                        </p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Low Confidence Helpful Rate</p>
+                        <p className="text-2xl font-bold text-zinc-900 mt-2">
+                          {feedbackAnalytics ? `${Math.round(feedbackAnalytics.lowConfidenceHelpfulRate * 100)}%` : 'N/A'}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {feedbackAnalytics ? `Sample size: ${feedbackAnalytics.lowConfidenceSampleSize}` : 'No low-confidence samples yet'}
+                        </p>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Top Negative Signals</p>
+                        <p className="text-2xl font-bold text-zinc-900 mt-2">
+                          {feedbackAnalytics ? feedbackAnalytics.topNegativeReasons.length : 0}
+                        </p>
+                        <p className="text-xs text-zinc-400 mt-1">
+                          {feedbackAnalytics?.topNegativeReasons?.[0]
+                            ? `${feedbackAnalytics.topNegativeReasons[0].reason.replaceAll('_', ' ')} (${feedbackAnalytics.topNegativeReasons[0].count})`
+                            : 'No negative signals yet'}
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="mt-6 bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
                 <h2 className="text-lg font-semibold text-zinc-900">KB Improvement Suggestions</h2>
@@ -940,10 +1034,12 @@ export default function AgentDashboard() {
                       onChange={(e) => setSelectedKbCompany(e.target.value)}
                       className="text-sm border border-zinc-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
-                      <option value="global">Global (All Users)</option>
-                      <option value="Acme Corp">Acme Corp</option>
-                      <option value="Globex">Globex</option>
-                      <option value="Initech">Initech</option>
+                      {Array.from(new Set(tickets.map(t => t.userProfile?.company).filter(Boolean))).sort().map(c => (
+                        <option key={c} value={c!}>{c}</option>
+                      ))}
+                      {tickets.filter(t => t.userProfile?.company).length === 0 && (
+                        <option value="" disabled>No companies yet — embed the widget to get started</option>
+                      )}
                     </select>
                   </div>
                   <Button onClick={handleSaveKb} disabled={isSavingKb} className="bg-indigo-600 hover:bg-indigo-700 gap-2 mt-4">
@@ -1113,14 +1209,32 @@ export default function AgentDashboard() {
                         </Button>
                         {(['open', 'pending', 'on-hold'] as const).map(statusOption => {
                           if (normalizeStatus(selectedTicket.status) === statusOption) return null;
+                          const statusStyles: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+                            open: {
+                              label: 'Set Open',
+                              cls: 'bg-indigo-500 hover:bg-indigo-600 text-white border-indigo-500 shadow-sm',
+                              icon: <span className="w-2 h-2 rounded-full bg-white opacity-90 inline-block" />,
+                            },
+                            pending: {
+                              label: 'Set Pending',
+                              cls: 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-sm',
+                              icon: <span className="w-2 h-2 rounded-full bg-white opacity-90 inline-block" />,
+                            },
+                            'on-hold': {
+                              label: 'Set On Hold',
+                              cls: 'bg-rose-500 hover:bg-rose-600 text-white border-rose-500 shadow-sm',
+                              icon: <span className="w-2 h-2 rounded-full bg-white opacity-90 inline-block" />,
+                            },
+                          };
+                          const s = statusStyles[statusOption];
                           return (
                             <Button
                               key={statusOption}
-                              variant="outline"
                               onClick={() => updateTicketStatus(selectedTicket.id, statusOption)}
-                              className="text-xs py-2 px-3 rounded-full border-slate-200 text-slate-600 hover:bg-slate-100"
+                              className={`gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg transition-all duration-150 ${s.cls}`}
                             >
-                              Set {statusOption === 'on-hold' ? 'On Hold' : statusOption.charAt(0).toUpperCase() + statusOption.slice(1)}
+                              {s.icon}
+                              {s.label}
                             </Button>
                           );
                         })}

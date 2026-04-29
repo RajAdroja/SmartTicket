@@ -3,20 +3,21 @@ import Box from '@mui/material/Box';
 import CustomerView from './pages/CustomerView';
 import AgentDashboard from './pages/AgentDashboard';
 import Settings from './pages/Settings.tsx';
+import WidgetOnlyView from './pages/WidgetOnlyView';
 import { TicketProvider } from './context/TicketContext';
 
 function App() {
   // If the user connects via port 5174, show the Agent Dashboard
-  // Otherwise (port 5173), show the Customer View
   const isAgentPort = window.location.port === '5174';
+  const isWidgetRoute = window.location.pathname.includes('/widget');
 
   return (
     <TicketProvider>
       <Router>
         <Box
           sx={{
-            minHeight: '100vh',
-            bgcolor: 'background.default',
+            minHeight: isWidgetRoute ? 'auto' : '100vh',
+            bgcolor: isWidgetRoute ? 'transparent' : 'background.default',
             color: 'text.primary',
             typography: 'body1',
           }}
@@ -33,6 +34,7 @@ function App() {
               <>
                 <Route path="/" element={<CustomerView />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/widget" element={<WidgetOnlyView />} />
                 <Route path="*" element={<CustomerView />} />
               </>
             )}

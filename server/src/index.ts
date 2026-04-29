@@ -39,9 +39,46 @@ const ChatMessageInputSchema = z.object({
   createdAt: z.string().optional(),
 });
 
+/**
+ * COMPANY TOKEN REGISTRY
+ * Maps secret API tokens → company name.
+ * In production this would live in a database/env, but for demonstration
+ * we keep it in memory. Tokens are added when a company registers their KB.
+ * Format: { "secret-token-abc123": "FlowMint", ... }
+ */
+const COMPANY_TOKEN_REGISTRY: Record<string, string> = {};
+
+// Allow the registry to be seeded from environment variable:
+// COMPANY_TOKENS=FlowMint:token123,AcmeCorp:token456
+if (process.env.COMPANY_TOKENS) {
+  process.env.COMPANY_TOKENS.split(',').forEach(pair => {
+    const [company, token] = pair.split(':');
+    if (company && token) COMPANY_TOKEN_REGISTRY[token.trim()] = company.trim();
+  });
+}
+
+/**
+ * Resolve the authorised company name from a chat request.
+ * - If a companyToken is provided and valid → return its mapped company name.
+ * - If a companyToken is provided but INVALID → return undefined (use global KB only).
+ * - If no token is provided but a company name is → allow it (backward-compatible for direct/agent use).
+ */
+function resolveCompany(company?: string, companyToken?: string): string | undefined {
+  if (companyToken) {
+    const authorized = COMPANY_TOKEN_REGISTRY[companyToken];
+    if (!authorized) {
+      console.warn(`[KB Security] Rejected unknown companyToken; falling back to global KB.`);
+      return undefined; // token provided but invalid → deny company KB
+    }
+    return authorized; // token is valid → use its company
+  }
+  return company; // no token → pass company name through (agent/direct use)
+}
+
 const ChatRequestSchema = z.object({
   messages: z.array(ChatMessageInputSchema).min(1),
   company: z.string().optional(),
+  companyToken: z.string().optional(), // secret token issued per company
 });
 
 const FeedbackRequestSchema = z.object({
@@ -95,9 +132,13 @@ app.post('/api/chat', async (req, res) => {
       })),
     });
   }
-  const { messages, company } = parsedRequest.data;
+  const { messages, company, companyToken } = parsedRequest.data;
+  const effectiveCompany = resolveCompany(company, companyToken);
+  if (companyToken && !effectiveCompany) {
+    console.warn(`[KB Security] Invalid companyToken rejected for company="${company}". Using global KB.`);
+  }
 
-  const { reply, suggestEscalation, suggestResolution, decision } = await generateChatResponse(messages, company);
+  const { reply, suggestEscalation, suggestResolution, decision } = await generateChatResponse(messages, effectiveCompany);
   const lastUserText = [...messages].reverse().find((msg: any) => msg?.sender === 'user' && typeof msg?.text === 'string')?.text ?? '';
 
   // force escalation for low confidence and sensitive actions.
@@ -242,6 +283,38 @@ app.post('/api/kb', async (req, res) => {
   } else {
     res.status(400).json({ error: 'Invalid format' });
   }
+});
+
+/**
+ * POST /api/company/register
+ * Issues a secret API token for a company, enabling secure KB access from their widget.
+ * Body: { company: string }
+ * Returns: { company, token }
+ */
+app.post('/api/company/register', (req, res) => {
+  const { company } = req.body;
+  if (!company || typeof company !== 'string') {
+    return res.status(400).json({ error: 'company name is required' });
+  }
+  // Check if already registered — return existing token
+  const existing = Object.entries(COMPANY_TOKEN_REGISTRY).find(([, c]) => c === company);
+  if (existing) {
+    return res.json({ company, token: existing[0], existing: true });
+  }
+  // Generate a new cryptographically random token
+  const token = `smt_${company.toLowerCase().replace(/\s+/g, '_')}_${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  COMPANY_TOKEN_REGISTRY[token] = company;
+  console.log(`[KB Security] Registered company "${company}" with token ${token}`);
+  res.json({ company, token, existing: false });
+});
+
+/**
+ * GET /api/company/tokens
+ * Lists all registered companies (tokens are hidden for security).
+ */
+app.get('/api/company/tokens', (_req, res) => {
+  const companies = Object.values(COMPANY_TOKEN_REGISTRY);
+  res.json({ companies });
 });
 
 app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {

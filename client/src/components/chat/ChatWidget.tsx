@@ -46,21 +46,21 @@ function getOrCreateSessionId(): string {
 function getEscalationReasonCopy(reason?: ChatApiResponseContract['decision']['escalationReason']): string {
   switch (reason) {
     case 'user_requested_human':
-      return 'You asked for a human agent, so I will connect you now.';
+      return 'Connecting you to a human agent now.';
     case 'sensitive_account_action':
-      return 'This request involves account-sensitive actions and needs a human agent.';
+      return 'Connecting you to a human agent for this account action.';
     case 'frustration_detected':
-      return 'I can tell this has been frustrating, so I will bring in a human agent.';
+      return 'Connecting you to a human agent right away.';
     case 'missing_kb_info':
-      return 'I do not have enough verified information in my knowledge base, so I will escalate this.';
+      return 'Escalating to a human agent — I don\'t have enough info for this.';
     case 'low_confidence':
-      return 'I am not fully confident in this answer, so I recommend a human handoff.';
+      return 'Handing off to a human agent for a more confident answer.';
     default:
-      return 'I will connect you to a human agent for faster and safer support.';
+      return 'Connecting you to the next available agent.';
   }
 }
 
-export default function ChatWidget() {
+export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolean }) {
   const { escalateTicket, joinTicketRoom, sendAgentReply, tickets, markAiResolved, resolveTicket, sendTypingStatus, typingIndicators, submitCsat, agentOnlineCount, socket } = useTickets();
   
   const loadInitialMessages = () => {
@@ -74,7 +74,11 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ticketId, setTicketId] = useState<string | null>(() => localStorage.getItem('smartTicket_ticketId'));
-  const MOCK_CUSTOMER_COMPANY = 'Acme Corp';
+  
+  // Read company from URL query param (passed by iframe) or default to 'Acme Corp'
+  const searchParams = new URLSearchParams(window.location.search);
+  const MOCK_CUSTOMER_COMPANY = searchParams.get('company') || 'Acme Corp';
+  
   const [isResolved, setIsResolved] = useState(() => localStorage.getItem('smartTicket_isResolved') === 'true');
   const [hasSubmittedCsat, setHasSubmittedCsat] = useState(false);
   const [chatSessionId, setChatSessionId] = useState<string>(() => getOrCreateSessionId());
@@ -99,6 +103,13 @@ export default function ChatWidget() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Expose resize to parent iframe if embedded
+  useEffect(() => {
+    if (isEmbedded) {
+      window.parent.postMessage(JSON.stringify({ type: 'smartticket_widget_resize', isOpen }), '*');
+    }
+  }, [isOpen, isEmbedded]);
 
   useEffect(() => {
     localStorage.setItem('smartTicket_messages', JSON.stringify(messages));
@@ -236,21 +247,17 @@ export default function ChatWidget() {
       if (data.suggestEscalation) {
         const newId = `ticket-${Date.now()}`;
         setTicketId(newId);
-        const escalationReasonMessage: Message = {
-          id: `escalation-reason-${Date.now()}`,
+
+        // Single short handoff message — no need for the AI reply + two extra messages
+        const escalationMsg: Message = {
+          id: `escalation-${Date.now()}`,
           sender: 'bot',
           text: getEscalationReasonCopy(data.decision?.escalationReason),
           createdAt: new Date().toISOString(),
         };
-        
-        const escalationMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'bot',
-          text: 'I am connecting you to the next available agent. Please hold on...',
-          createdAt: new Date().toISOString(),
-        };
-        
-        const finalHistory = [...updatedHistory, escalationReasonMessage, escalationMsg];
+
+        // Replace the AI's verbose reply with just our short escalation message
+        const finalHistory = [...updatedHistory.slice(0, -1), escalationMsg];
         setMessages(finalHistory);
         const explainability: EscalationExplainability = {
           lastAiConfidenceScore: data.decision?.confidenceScore,
@@ -258,7 +265,7 @@ export default function ChatWidget() {
           escalationReason: data.decision?.escalationReason,
           escalationTriggerSource: getTriggerSourceFromReason(data.decision?.escalationReason),
         };
-        
+
         joinTicketRoom(newId);
         escalateTicket(newId, "Customer", finalHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
       } else if (data.suggestResolution) {
@@ -450,7 +457,7 @@ export default function ChatWidget() {
         </Box>
       )}
 
-      <Box sx={{ position: 'fixed', bottom: 24, right: 24, zIndex: 1200 }}>
+      <Box sx={{ position: 'fixed', bottom: isEmbedded ? 0 : 24, right: isEmbedded ? 0 : 24, top: (isEmbedded && isOpen) ? 0 : 'auto', left: (isEmbedded && isOpen) ? 0 : 'auto', zIndex: 1200 }}>
         {!isOpen && (
           <Badge badgeContent={unreadCount} color="error" overlap="circular" invisible={unreadCount === 0}>
             <IconButton
@@ -475,14 +482,15 @@ export default function ChatWidget() {
         {isOpen && (
           <Card
             sx={{
-              width: 380,
-              maxWidth: 'calc(100vw - 32px)',
-              height: isCompactWidget ? 420 : 560,
-              maxHeight: '80vh',
+              width: isEmbedded ? '100vw' : 380,
+              maxWidth: isEmbedded ? '100vw' : 'calc(100vw - 32px)',
+              height: isEmbedded ? '100vh' : (isCompactWidget ? 420 : 560),
+              maxHeight: isEmbedded ? '100vh' : '80vh',
               display: 'flex',
               flexDirection: 'column',
               overflow: 'hidden',
-              boxShadow: 8,
+              boxShadow: isEmbedded ? 'none' : 8,
+              borderRadius: isEmbedded ? 0 : undefined,
             }}
           >
             <Box

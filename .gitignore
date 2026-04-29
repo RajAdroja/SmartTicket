@@ -1,0 +1,9 @@
+# Third-party demo apps — local testing only, not part of this repo
+test-flowmint/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
