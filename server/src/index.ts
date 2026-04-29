@@ -11,7 +11,7 @@ import {
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
-import { ChatApiResponseSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
+import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
 
 dotenv.config();
 
@@ -33,12 +33,42 @@ app.post('/api/chat', async (req, res) => {
   }
 
   const { reply, suggestEscalation, suggestResolution, decision } = await generateChatResponse(messages, company);
+  const lastUserText = [...messages].reverse().find((msg: any) => msg?.sender === 'user' && typeof msg?.text === 'string')?.text ?? '';
+
+  // force escalation for low confidence and sensitive actions.
+  const LOW_CONFIDENCE_THRESHOLD = 50;
+  const userIntentEscalation = /human|agent|support|escalate|representative/i.test(lastUserText);
+  const lowConfidenceEscalation = decision.confidenceScore < LOW_CONFIDENCE_THRESHOLD || decision.confidenceLabel === 'low';
+  const sensitiveActionEscalation = decision.escalationReason === 'sensitive_account_action';
+  const finalSuggestEscalation = suggestEscalation || lowConfidenceEscalation || sensitiveActionEscalation || userIntentEscalation;
+  const finalSuggestResolution = finalSuggestEscalation ? false : suggestResolution;
+
+  let finalEscalationReason = decision.escalationReason;
+  if (sensitiveActionEscalation) {
+    finalEscalationReason = 'sensitive_account_action';
+  } else if (userIntentEscalation) {
+    finalEscalationReason = 'user_requested_human';
+  } else if (lowConfidenceEscalation) {
+    finalEscalationReason = 'low_confidence';
+  } else if (!finalSuggestEscalation) {
+    finalEscalationReason = 'none';
+  }
+
+  const finalDecision = ChatDecisionSchema.parse({
+    ...decision,
+    escalationReason: finalEscalationReason,
+    recommendedAction: finalSuggestEscalation
+      ? 'auto_escalate'
+      : decision.confidenceLabel === 'medium'
+        ? 'offer_human'
+        : 'continue_ai',
+  });
 
   const payload = ChatApiResponseSchema.parse({
     reply,
-    suggestEscalation,
-    suggestResolution,
-    decision,
+    suggestEscalation: finalSuggestEscalation,
+    suggestResolution: finalSuggestResolution,
+    decision: finalDecision,
     feedbackOptions: DEFAULT_FEEDBACK_OPTIONS,
   });
 
