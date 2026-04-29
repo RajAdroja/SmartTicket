@@ -8,6 +8,7 @@ export interface Message {
   text: string;
   attachment?: string;
   isInternal?: boolean;
+  createdAt?: string;
 }
 
 export interface Ticket {
@@ -30,7 +31,8 @@ const MessageSchema = new Schema<Message>({
   sender: { type: String, enum: ['bot', 'user', 'agent'] },
   text: String,
   attachment: String,
-  isInternal: { type: Boolean, default: false }
+  isInternal: { type: Boolean, default: false },
+  createdAt: String,
 }, { _id: false });
 
 const TicketSchema = new Schema<Ticket>({
