@@ -21,6 +21,7 @@ function formatMsgTime(createdAt?: string): string {
   return `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
 }
 
+// SLA thresholds: < 30 min = ok, 30–60 min = approaching, > 60 min = breached
 function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -30,15 +31,26 @@ function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
 
   const ms = Date.now() - new Date(escalatedAt).getTime();
   const mins = Math.floor(ms / 60_000);
-  const label = mins < 1 ? 'just now' : mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h`;
-  const level = mins >= 10 ? 'red' : mins >= 5 ? 'amber' : 'green';
+  const label = mins < 1 ? 'just now' : mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  const level: 'ok' | 'approaching' | 'breached' =
+    mins >= 60 ? 'breached' : mins >= 30 ? 'approaching' : 'ok';
 
+  if (level === 'breached') {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border bg-rose-100 text-rose-700 border-rose-300 animate-pulse">
+        ✕ SLA {label}
+      </span>
+    );
+  }
+  if (level === 'approaching') {
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border bg-amber-50 text-amber-700 border-amber-300">
+        ⚠ {label}
+      </span>
+    );
+  }
   return (
-    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
-      level === 'red'   ? 'bg-rose-50 text-rose-600 border-rose-200' :
-      level === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-200' :
-                          'bg-slate-50 text-slate-400 border-slate-200'
-    }`}>
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold px-1.5 py-0.5 rounded-md border bg-emerald-50 text-emerald-600 border-emerald-200">
       ⏱ {label}
     </span>
   );
