@@ -41,6 +41,33 @@ export default function AgentDashboard() {
   // Incoming transfer toast
   const [incomingTransfer, setIncomingTransfer] = useState<{ ticketId: string; fromAgentName: string; note: string } | null>(null);
 
+  // SLA timer — tick every 30s to re-render elapsed times
+  const [, setTimerTick] = useState(0);
+  useEffect(() => {
+    const interval = setInterval(() => setTimerTick(t => t + 1), 30_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Unread counts per ticket — track last-viewed message count
+  const lastViewedRef = useRef<Record<string, number>>({});
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    tickets.forEach(ticket => {
+      if (ticket.id === selectedTicketId) {
+        // Currently viewing — mark all as read
+        lastViewedRef.current[ticket.id] = ticket.messages.length;
+        next[ticket.id] = 0;
+      } else {
+        const lastSeen = lastViewedRef.current[ticket.id] ?? ticket.messages.length;
+        const newMsgs = ticket.messages.slice(lastSeen).filter(m => m.sender !== 'agent' && !m.isInternal);
+        next[ticket.id] = newMsgs.length;
+      }
+    });
+    setUnreadCounts(next);
+  }, [tickets, selectedTicketId]);
+
   useEffect(() => {
     localStorage.setItem('agent_sound', String(soundEnabled));
   }, [soundEnabled]);
@@ -108,6 +135,15 @@ export default function AgentDashboard() {
       default:
         return 'bg-slate-100 text-slate-500 border-slate-200';
     }
+  };
+
+  // SLA elapsed time helper
+  const getElapsed = (escalatedAt: Date | string) => {
+    const ms = Date.now() - new Date(escalatedAt).getTime();
+    const mins = Math.floor(ms / 60_000);
+    if (mins < 60) return { label: mins < 1 ? 'just now' : `${mins}m`, level: mins >= 10 ? 'red' : mins >= 5 ? 'amber' : 'green' };
+    const hrs = Math.floor(mins / 60);
+    return { label: `${hrs}h`, level: 'red' };
   };
 
   const filteredTickets = [...tickets].reverse().filter(ticket => {
@@ -536,14 +572,35 @@ export default function AgentDashboard() {
                   >
                     <div className="flex justify-between items-start w-full">
                       <div className="flex flex-col gap-1 items-start">
-                        <span className={`font-semibold text-sm ${isResolved ? 'text-slate-500' : 'text-slate-900'} ${selectedTicketId === ticket.id ? 'text-blue-900' : ''}`}>
-                          {ticket.customerName}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold text-sm ${isResolved ? 'text-slate-500' : 'text-slate-900'} ${selectedTicketId === ticket.id ? 'text-blue-900' : ''}`}>
+                            {ticket.customerName}
+                          </span>
+                          {/* Unread badge */}
+                          {!isResolved && (unreadCounts[ticket.id] ?? 0) > 0 && (
+                            <span className="flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold shrink-0">
+                              {unreadCounts[ticket.id]}
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <Badge variant="secondary" className={`text-[9px] py-0 h-4 border ${statusBadgeClass(ticket.status)}`}>
                             {statusLabel(ticket.status)}
                           </Badge>
                           {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
+                          {/* SLA timer — only on active tickets */}
+                          {!isResolved && (() => {
+                            const { label, level } = getElapsed(ticket.escalatedAt);
+                            return (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+                                level === 'red' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                level === 'amber' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                'bg-slate-50 text-slate-400 border-slate-200'
+                              }`}>
+                                ⏱ {label}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                       <span className="text-xs font-medium text-slate-400 shrink-0">
