@@ -97,8 +97,8 @@ app.post('/api/kb/upload', upload.single('pdf'), async (req, res) => {
 
 let agentCount = 0;
 
-// Track online agents: socketId -> { agentId, name }
-const onlineAgents = new Map<string, { agentId: string; name: string }>();
+// Track online agents: socketId -> { agentId, name, status }
+const onlineAgents = new Map<string, { agentId: string; name: string; status: 'available' | 'busy' | 'away' }>();
 
 io.on('connection', (socket) => {
 
@@ -108,7 +108,7 @@ io.on('connection', (socket) => {
 
     const agentId = payload?.agentId || socket.id;
     const name = payload?.name || `Agent ${agentCount}`;
-    onlineAgents.set(socket.id, { agentId, name });
+    onlineAgents.set(socket.id, { agentId, name, status: 'available' });
 
     io.emit('agent_online_count', agentCount);
     // Broadcast updated agent list to all agents (including the one who just joined)
@@ -118,6 +118,16 @@ io.on('connection', (socket) => {
   // Allow any agent to request the current list at any time
   socket.on('get_online_agents', () => {
     socket.emit('online_agents', Array.from(onlineAgents.values()));
+  });
+
+  // Handle agent status change
+  socket.on('set_agent_status', (status: 'available' | 'busy' | 'away') => {
+    const agent = onlineAgents.get(socket.id);
+    if (agent) {
+      agent.status = status;
+      // Broadcast updated agent list to all agents
+      io.to('agents_room').emit('online_agents', Array.from(onlineAgents.values()));
+    }
   });
 
   socket.on('transfer_ticket', async (data: { ticketId: string; toAgentId: string; note?: string; fromAgentName?: string }) => {

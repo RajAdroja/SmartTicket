@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 const API_URL = 'http://localhost:5001';
 
 export default function AgentDashboard() {
-  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification } = useTickets();
+  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [reply, setReply] = useState('');
   const [activeTab, setActiveTab] = useState<'queue' | 'analytics' | 'knowledge'>('queue');
@@ -318,8 +318,18 @@ export default function AgentDashboard() {
                       <div>
                         <div className="text-sm font-semibold text-slate-800">{agent.name}</div>
                         <div className="flex items-center gap-1 mt-0.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                          <span className="text-xs text-emerald-600 font-medium">Online</span>
+                          <span className={`w-1.5 h-1.5 rounded-full inline-block ${
+                            agent.status === 'available' ? 'bg-emerald-500' :
+                            agent.status === 'busy' ? 'bg-amber-500' :
+                            'bg-slate-400'
+                          }`}></span>
+                          <span className={`text-xs font-medium ${
+                            agent.status === 'available' ? 'text-emerald-600' :
+                            agent.status === 'busy' ? 'text-amber-600' :
+                            'text-slate-500'
+                          }`}>
+                            {agent.status === 'available' ? 'Available' : agent.status === 'busy' ? 'Busy' : 'Away'}
+                          </span>
                         </div>
                       </div>
                       {transferTargetId === agent.agentId && (
@@ -421,6 +431,15 @@ export default function AgentDashboard() {
             </button>
           </div>
           <div className="flex items-center gap-4 text-sm font-medium">
+            <select
+              value={agentStatus}
+              onChange={(e) => setAgentStatus(e.target.value as 'available' | 'busy' | 'away')}
+              className="px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-200 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer hover:bg-slate-700 transition-colors"
+            >
+              <option value="available" className="bg-slate-900">🟢 Available</option>
+              <option value="busy" className="bg-slate-900">🟡 Busy</option>
+              <option value="away" className="bg-slate-900">🔴 Away</option>
+            </select>
             <button
               onClick={() => setSoundEnabled(p => !p)}
               className="text-slate-400 hover:text-white transition-colors p-2 rounded-full hover:bg-slate-800"

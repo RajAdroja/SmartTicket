@@ -35,6 +35,7 @@ export interface Metrics {
 export interface OnlineAgent {
   agentId: string;
   name: string;
+  status: 'available' | 'busy' | 'away';
 }
 
 export interface TransferNotification {
@@ -47,6 +48,8 @@ interface TicketContextType {
   tickets: Ticket[];
   socket: Socket | null;
   agentId: string;
+  agentStatus: 'available' | 'busy' | 'away';
+  setAgentStatus: (status: 'available' | 'busy' | 'away') => void;
   onlineAgents: OnlineAgent[];
   transferNotification: TransferNotification | null;
   clearTransferNotification: () => void;
@@ -83,6 +86,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   const [agentOnlineCount, setAgentOnlineCount] = useState(0);
   const [onlineAgents, setOnlineAgents] = useState<OnlineAgent[]>([]);
   const [transferNotification, setTransferNotification] = useState<TransferNotification | null>(null);
+  const [agentStatus, setAgentStatusLocal] = useState<'available' | 'busy' | 'away'>('available');
   const agentId = AGENT_ID;
 
   useEffect(() => {
@@ -230,9 +234,16 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     setTransferNotification(null);
   }, []);
 
+  const setAgentStatus = useCallback((status: 'available' | 'busy' | 'away') => {
+    setAgentStatusLocal(status);
+    if (socket) {
+      socket.emit('set_agent_status', status);
+    }
+  }, [socket]);
+
   return (
     <TicketContext.Provider value={{ 
-      tickets, socket, agentId, onlineAgents, transferNotification, clearTransferNotification,
+      tickets, socket, agentId, agentStatus, setAgentStatus, onlineAgents, transferNotification, clearTransferNotification,
       escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
       typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount, transferTicket
     }}>
