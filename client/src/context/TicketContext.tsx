@@ -28,6 +28,7 @@ export interface Ticket {
   escalationReason?: 'none' | 'missing_kb_info' | 'sensitive_account_action' | 'user_requested_human' | 'frustration_detected' | 'low_confidence';
   assignedAgentId?: string;
   assignedAgentName?: string;
+  autoAssignedAt?: Date | string;
   escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
 }
 
@@ -50,6 +51,7 @@ export interface OnlineAgent {
   agentId: string;
   name: string;
   status: 'available' | 'busy' | 'away';
+  ticketCount?: number;
 }
 
 export interface TransferNotification {
@@ -105,6 +107,19 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   const [agentStatus, setAgentStatusLocal] = useState<'available' | 'busy' | 'away'>('available');
   const agentId = AGENT_ID;
 
+  // Fetch agent load (ticket counts per agent)
+  const fetchAgentLoad = useCallback(async () => {
+    try {
+      const res = await fetch(`${SOCKET_URL}/api/agents/load`);
+      const data = await res.json();
+      if (data.agents) {
+        setOnlineAgents(data.agents);
+      }
+    } catch (err) {
+      console.error('Failed to fetch agent load:', err);
+    }
+  }, []);
+
   useEffect(() => {
     const newSocket = io(SOCKET_URL);
     setSocket(newSocket);
@@ -117,8 +132,13 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
       .then(res => res.json())
       .then(data => setMetrics(data))
 
+    // Fetch agent load initially
+    fetchAgentLoad();
+
     newSocket.on('new_ticket', (ticket: Ticket) => {
       setTickets(prev => [...prev, ticket]);
+      // Refresh agent load when new ticket arrives
+      fetchAgentLoad();
     });
 
     newSocket.on('ticket_updated', (data: { ticketId: string, message: Message }) => {
@@ -133,6 +153,8 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
     newSocket.on('ticket_resolved', (ticketId: string) => {
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'resolved' } : t));
+      // Refresh agent load when ticket resolves
+      fetchAgentLoad();
     });
 
     newSocket.on('ticket_status_updated', (data: { ticketId: string, status: Ticket['status'] }) => {
@@ -159,22 +181,33 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
 
     newSocket.on('online_agents', (agents: OnlineAgent[]) => {
       setOnlineAgents(agents);
+      // Refresh agent load when agents list changes
+      fetchAgentLoad();
     });
 
     newSocket.on('ticket_transferred', (data: { ticketId: string; toAgentId: string; toAgentName?: string; fromAgentName: string; note: string }) => {
       if (data.toAgentId === agentId) {
         setTransferNotification({ ticketId: data.ticketId, fromAgentName: data.fromAgentName, note: data.note });
       }
+      // Refresh agent load when ticket is transferred
+      fetchAgentLoad();
     });
 
     newSocket.on('ticket_assigned', (data: { ticket: Ticket }) => {
       setTickets(prev => prev.map(t => t.id === data.ticket.id ? { ...t, ...data.ticket } : t));
+      // Refresh agent load when ticket is assigned
+      fetchAgentLoad();
+    });
+
+    newSocket.on('ticket_auto_assigned', (data: { ticketId: string; agentId: string; agentName: string; customerName: string }) => {
+      // Refresh agent load when ticket is auto-assigned
+      fetchAgentLoad();
     });
 
     return () => {
       newSocket.close();
     };
-  }, []);
+  }, [fetchAgentLoad]);
 
   const escalateTicket = useCallback((ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }, explainability?: EscalationExplainability) => {
     if (socket) {

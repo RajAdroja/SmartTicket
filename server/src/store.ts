@@ -27,6 +27,7 @@ export interface Ticket {
   };
   assignedAgentId?: string;
   assignedAgentName?: string;
+  autoAssignedAt?: Date;
   lastAiConfidenceScore?: number;
   lastAiConfidenceLabel?: ConfidenceLabel;
   escalationReason?: EscalationReason;
@@ -57,6 +58,7 @@ const TicketSchema = new Schema<Ticket>({
   },
   assignedAgentId: { type: String, default: null },
   assignedAgentName: { type: String, default: null },
+  autoAssignedAt: { type: Date, default: null },
   lastAiConfidenceScore: { type: Number, default: null },
   lastAiConfidenceLabel: { type: String, enum: ['high', 'medium', 'low'], default: null },
   escalationReason: {
@@ -151,6 +153,19 @@ export const resolveTicket = async (ticketId: string): Promise<boolean> => {
 export const updateTicketStatus = async (ticketId: string, status: Ticket['status']): Promise<boolean> => {
   const result = await TicketModel.updateOne({ id: ticketId }, { status });
   return result.modifiedCount > 0;
+};
+
+export const assignTicketToAgent = async (ticketId: string, agentId: string, agentName: string, autoAssigned: boolean = false): Promise<Ticket | null> => {
+  const result = await TicketModel.findOneAndUpdate(
+    { id: ticketId },
+    {
+      assignedAgentId: agentId,
+      assignedAgentName: agentName,
+      ...(autoAssigned && { autoAssignedAt: new Date() })
+    },
+    { new: true }
+  ).lean();
+  return result as unknown as Ticket | null;
 };
 
 export const getMetrics = async () => {

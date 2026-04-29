@@ -9,7 +9,7 @@ import { z } from 'zod';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
-  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics
+  submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -78,6 +78,55 @@ function resolveCompany(company?: string, companyToken?: string): string | undef
 function findAgentNameById(agentId: string): string | null {
   const agent = Array.from(onlineAgents.values()).find((a) => a.agentId === agentId);
   return agent?.name ?? null;
+}
+
+/**
+ * Calculate ticket count per agent (active tickets only)
+ */
+async function getAgentLoadMap(): Promise<Record<string, number>> {
+  const tickets = await getActiveTickets();
+  const loadMap: Record<string, number> = {};
+  
+  // Initialize all online agents with 0
+  for (const agent of onlineAgents.values()) {
+    loadMap[agent.agentId] = 0;
+  }
+  
+  // Count active tickets per agent
+  for (const ticket of tickets) {
+    if (ticket.assignedAgentId) {
+      loadMap[ticket.assignedAgentId] = (loadMap[ticket.assignedAgentId] ?? 0) + 1;
+    }
+  }
+  
+  return loadMap;
+}
+
+/**
+ * Find the best available agent for auto-assignment
+ * Strategy: Round-robin with load balancing
+ * - Only consider agents with status = "available"
+ * - Assign to agent with fewest active tickets
+ * - Return null if no available agents
+ */
+async function findBestAvailableAgent(): Promise<{ agentId: string; name: string } | null> {
+  const availableAgents = Array.from(onlineAgents.values()).filter(a => a.status === 'available');
+  
+  if (availableAgents.length === 0) {
+    return null;
+  }
+  
+  const loadMap = await getAgentLoadMap();
+  
+  // Sort by ticket count (ascending) to find least-loaded agent
+  const sorted = availableAgents.sort((a, b) => {
+    const loadA = loadMap[a.agentId] ?? 0;
+    const loadB = loadMap[b.agentId] ?? 0;
+    return loadA - loadB;
+  });
+  
+  const best = sorted[0];
+  return { agentId: best.agentId, name: best.name };
 }
 
 const ChatRequestSchema = z.object({
@@ -203,6 +252,17 @@ app.get('/api/tickets', async (req, res) => {
 
 app.get('/api/tickets/all', async (req, res) => {
   res.json(await getAllTickets());
+});
+
+app.get('/api/agents/load', async (req, res) => {
+  const loadMap = await getAgentLoadMap();
+  const agentsList = Array.from(onlineAgents.values()).map(agent => ({
+    agentId: agent.agentId,
+    name: agent.name,
+    status: agent.status,
+    ticketCount: loadMap[agent.agentId] ?? 0,
+  }));
+  res.json({ agents: agentsList });
 });
 
 app.get('/api/metrics', async (req, res) => {
@@ -472,6 +532,9 @@ io.on('connection', (socket) => {
       generateTag(chatHistory)
     ]);
 
+    // Try to auto-assign to best available agent
+    const bestAgent = await findBestAvailableAgent();
+
     const newTicket = {
       id: ticketId,
       customerName,
@@ -481,6 +544,9 @@ io.on('connection', (socket) => {
       summary,
       tag,
       userProfile,
+      assignedAgentId: bestAgent?.agentId,
+      assignedAgentName: bestAgent?.name,
+      autoAssignedAt: bestAgent ? new Date() : undefined,
       lastAiConfidenceScore: explainability?.lastAiConfidenceScore,
       lastAiConfidenceLabel: explainability?.lastAiConfidenceLabel,
       escalationReason: explainability?.escalationReason || 'none',
@@ -493,6 +559,16 @@ io.on('connection', (socket) => {
     const metrics = await getMetrics();
     io.to('agents_room').emit('new_ticket', newTicket);
     io.to('agents_room').emit('metrics_updated', metrics);
+    
+    // Notify the assigned agent if auto-assigned
+    if (bestAgent) {
+      io.to('agents_room').emit('ticket_auto_assigned', {
+        ticketId,
+        agentId: bestAgent.agentId,
+        agentName: bestAgent.name,
+        customerName,
+      });
+    }
   });
 
   socket.on('agent_reply', async (data: { ticketId: string, message: Message }) => {

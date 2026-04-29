@@ -516,9 +516,9 @@ export default function AgentDashboard() {
                       <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-bold border border-blue-200/50">
                         {agent.name.charAt(0).toUpperCase()}
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <div className="text-sm font-semibold text-slate-800">{agent.name}</div>
-                        <div className="flex items-center gap-1 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5">
                           <span className={`w-1.5 h-1.5 rounded-full inline-block ${
                             agent.status === 'available' ? 'bg-emerald-500' :
                             agent.status === 'busy' ? 'bg-amber-500' :
@@ -531,10 +531,15 @@ export default function AgentDashboard() {
                           }`}>
                             {agent.status === 'available' ? 'Available' : agent.status === 'busy' ? 'Busy' : 'Away'}
                           </span>
+                          {agent.ticketCount !== undefined && (
+                            <span className="text-xs text-slate-400 ml-auto">
+                              {agent.ticketCount} ticket{agent.ticketCount !== 1 ? 's' : ''}
+                            </span>
+                          )}
                         </div>
                       </div>
                       {transferTargetId === agent.agentId && (
-                        <CheckCircle size={16} className="text-blue-600 ml-auto" />
+                        <CheckCircle size={16} className="text-blue-600" />
                       )}
                     </button>
                   ))}
@@ -851,6 +856,11 @@ export default function AgentDashboard() {
                           {ticket.escalationReason && ticket.escalationReason !== 'none' && (
                             <Badge variant="outline" className="text-[9px] py-0 h-4 text-violet-700 bg-violet-50 border-violet-200">
                               {escalationReasonLabel(ticket.escalationReason)}
+                            </Badge>
+                          )}
+                          {ticket.autoAssignedAt && (
+                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-blue-700 bg-blue-50 border-blue-200">
+                              Auto-assigned
                             </Badge>
                           )}
                           {ticket.assignedAgentName ? (
