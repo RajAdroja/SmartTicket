@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import dotenv from 'dotenv';
+import type { ConfidenceLabel, EscalationReason } from './ai-contract';
 dotenv.config();
 
 export interface Message {
@@ -24,6 +25,10 @@ export interface Ticket {
     email: string;
     company: string;
   };
+  lastAiConfidenceScore?: number;
+  lastAiConfidenceLabel?: ConfidenceLabel;
+  escalationReason?: EscalationReason;
+  escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
 }
 
 const MessageSchema = new Schema<Message>({
@@ -47,7 +52,19 @@ const TicketSchema = new Schema<Ticket>({
     name: String,
     email: String,
     company: String
-  }
+  },
+  lastAiConfidenceScore: { type: Number, default: null },
+  lastAiConfidenceLabel: { type: String, enum: ['high', 'medium', 'low'], default: null },
+  escalationReason: {
+    type: String,
+    enum: ['none', 'missing_kb_info', 'sensitive_account_action', 'user_requested_human', 'frustration_detected', 'low_confidence'],
+    default: 'none',
+  },
+  escalationTriggerSource: {
+    type: String,
+    enum: ['user_request', 'confidence_rule', 'policy_rule', 'model_signal'],
+    default: 'model_signal',
+  },
 }, { timestamps: true });
 
 const MetricsSchema = new Schema({
@@ -147,4 +164,39 @@ export const getKnowledgeBase = async (company: string = 'global'): Promise<stri
 
 export const setKnowledgeBase = async (content: string, company: string = 'global') => {
   await KbModel.updateOne({ _id: company }, { content }, { upsert: true });
+};
+
+export const getExplainabilityMetrics = async () => {
+  const docs = await TicketModel.find(
+    {},
+    { lastAiConfidenceLabel: 1, escalationReason: 1, escalationTriggerSource: 1 }
+  ).lean() as Array<{
+    lastAiConfidenceLabel?: ConfidenceLabel | null;
+    escalationReason?: EscalationReason | null;
+    escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal' | null;
+  }>;
+
+  const confidenceDistribution = { high: 0, medium: 0, low: 0, unknown: 0 };
+  const escalationReasonCounts: Record<string, number> = {};
+  const triggerSourceCounts: Record<string, number> = {};
+
+  for (const doc of docs) {
+    if (doc.lastAiConfidenceLabel === 'high') confidenceDistribution.high += 1;
+    else if (doc.lastAiConfidenceLabel === 'medium') confidenceDistribution.medium += 1;
+    else if (doc.lastAiConfidenceLabel === 'low') confidenceDistribution.low += 1;
+    else confidenceDistribution.unknown += 1;
+
+    const reason = doc.escalationReason || 'none';
+    escalationReasonCounts[reason] = (escalationReasonCounts[reason] ?? 0) + 1;
+
+    const trigger = doc.escalationTriggerSource || 'model_signal';
+    triggerSourceCounts[trigger] = (triggerSourceCounts[trigger] ?? 0) + 1;
+  }
+
+  return {
+    totalTickets: docs.length,
+    confidenceDistribution,
+    escalationReasonCounts,
+    triggerSourceCounts,
+  };
 };

@@ -200,8 +200,19 @@ io.on('connection', (socket) => {
     io.to(ticketId).emit('ticket_updated', { ticketId, message: transferMsg });
   });
 
-  socket.on('escalate_ticket', async (data: { ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string } }) => {
-    const { ticketId, customerName, chatHistory, userProfile } = data;
+  socket.on('escalate_ticket', async (data: {
+    ticketId: string,
+    customerName: string,
+    chatHistory: Message[],
+    userProfile: { name: string, email: string, company: string },
+    explainability?: {
+      lastAiConfidenceScore?: number;
+      lastAiConfidenceLabel?: 'high' | 'medium' | 'low';
+      escalationReason?: 'none' | 'missing_kb_info' | 'sensitive_account_action' | 'user_requested_human' | 'frustration_detected' | 'low_confidence';
+      escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
+    }
+  }) => {
+    const { ticketId, customerName, chatHistory, userProfile, explainability } = data;
     socket.join(ticketId);
 
     const [summary, tag] = await Promise.all([
@@ -217,7 +228,11 @@ io.on('connection', (socket) => {
       escalatedAt: new Date(),
       summary,
       tag,
-      userProfile
+      userProfile,
+      lastAiConfidenceScore: explainability?.lastAiConfidenceScore,
+      lastAiConfidenceLabel: explainability?.lastAiConfidenceLabel,
+      escalationReason: explainability?.escalationReason || 'none',
+      escalationTriggerSource: explainability?.escalationTriggerSource || 'model_signal',
     };
 
     await addTicket(newTicket);
