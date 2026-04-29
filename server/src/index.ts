@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import pdfParse from 'pdf-parse';
+import { z } from 'zod';
 import {
   connectDB, getActiveTickets, getAllTickets, addTicket, addMessageToTicket, resolveTicket,
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
@@ -21,16 +22,72 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+const ChatMessageInputSchema = z.object({
+  id: z.string(),
+  sender: z.enum(['bot', 'user', 'agent']),
+  text: z.string(),
+  attachment: z.string().optional(),
+  isInternal: z.boolean().optional(),
+  createdAt: z.string().optional(),
+});
+
+const ChatRequestSchema = z.object({
+  messages: z.array(ChatMessageInputSchema).min(1),
+  company: z.string().optional(),
+});
+
+const FeedbackRequestSchema = z.object({
+  sessionId: z.string().min(1),
+  ticketId: z.string().optional(),
+  company: z.string().optional(),
+  helpful: z.boolean(),
+  reasons: z.array(z.string()).max(20).optional(),
+  comment: z.string().max(2000).optional(),
+  aiDecision: z.object({
+    confidenceScore: z.number().int().min(0).max(100).optional(),
+    confidenceLabel: z.enum(['high', 'medium', 'low']).optional(),
+    escalationReason: z.string().optional(),
+    recommendedAction: z.string().optional(),
+  }).optional(),
+});
+
+const EscalateTicketPayloadSchema = z.object({
+  ticketId: z.string().min(1),
+  customerName: z.string().min(1),
+  chatHistory: z.array(ChatMessageInputSchema),
+  userProfile: z.object({
+    name: z.string(),
+    email: z.string(),
+    company: z.string(),
+  }),
+  explainability: z.object({
+    lastAiConfidenceScore: z.number().int().min(0).max(100).optional(),
+    lastAiConfidenceLabel: z.enum(['high', 'medium', 'low']).optional(),
+    escalationReason: z.enum(['none', 'missing_kb_info', 'sensitive_account_action', 'user_requested_human', 'frustration_detected', 'low_confidence']).optional(),
+    escalationTriggerSource: z.enum(['user_request', 'confidence_rule', 'policy_rule', 'model_signal']).optional(),
+  }).optional(),
+});
+
+const feedbackCooldown = new Map<string, number>();
+const FEEDBACK_COOLDOWN_MS = 5000;
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] }
 });
 
 app.post('/api/chat', async (req, res) => {
-  const { messages, company } = req.body;
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Invalid messages format' });
+  const parsedRequest = ChatRequestSchema.safeParse(req.body);
+  if (!parsedRequest.success) {
+    return res.status(400).json({
+      error: 'Invalid chat request',
+      issues: parsedRequest.error.issues.map(issue => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    });
   }
+  const { messages, company } = parsedRequest.data;
 
   const { reply, suggestEscalation, suggestResolution, decision } = await generateChatResponse(messages, company);
   const lastUserText = [...messages].reverse().find((msg: any) => msg?.sender === 'user' && typeof msg?.text === 'string')?.text ?? '';
@@ -88,19 +145,25 @@ app.get('/api/metrics', async (req, res) => {
 });
 
 app.post('/api/feedback', async (req, res) => {
-  const { sessionId, ticketId, company, helpful, reasons, comment, aiDecision } = req.body ?? {};
-  if (!sessionId || typeof sessionId !== 'string') {
-    return res.status(400).json({ error: 'sessionId is required' });
+  const parsedRequest = FeedbackRequestSchema.safeParse(req.body);
+  if (!parsedRequest.success) {
+    return res.status(400).json({
+      error: 'Invalid feedback request',
+      issues: parsedRequest.error.issues.map(issue => ({
+        path: issue.path.join('.'),
+        message: issue.message,
+      })),
+    });
   }
-  if (typeof helpful !== 'boolean') {
-    return res.status(400).json({ error: 'helpful must be boolean' });
+  const { sessionId, ticketId, company, helpful, reasons, comment, aiDecision } = parsedRequest.data;
+
+  const now = Date.now();
+  const feedbackKey = `${sessionId}:${req.ip ?? 'unknown'}`;
+  const lastSubmissionAt = feedbackCooldown.get(feedbackKey) ?? 0;
+  if (now - lastSubmissionAt < FEEDBACK_COOLDOWN_MS) {
+    return res.status(429).json({ error: 'Feedback submitted too quickly. Please wait a few seconds.' });
   }
-  if (reasons && !Array.isArray(reasons)) {
-    return res.status(400).json({ error: 'reasons must be an array when provided' });
-  }
-  if (comment && typeof comment !== 'string') {
-    return res.status(400).json({ error: 'comment must be a string when provided' });
-  }
+  feedbackCooldown.set(feedbackKey, now);
 
   const result = await submitAiFeedback({
     sessionId,
@@ -248,7 +311,12 @@ io.on('connection', (socket) => {
       escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
     }
   }) => {
-    const { ticketId, customerName, chatHistory, userProfile, explainability } = data;
+    const parsedPayload = EscalateTicketPayloadSchema.safeParse(data);
+    if (!parsedPayload.success) {
+      socket.emit('ticket_error', { error: 'Invalid escalate payload' });
+      return;
+    }
+    const { ticketId, customerName, chatHistory, userProfile, explainability } = parsedPayload.data;
     socket.join(ticketId);
 
     const [summary, tag] = await Promise.all([
