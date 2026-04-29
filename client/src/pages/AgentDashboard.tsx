@@ -771,7 +771,7 @@ export default function AgentDashboard() {
                   value={kbText}
                   onChange={e => setKbText(e.target.value)}
                   placeholder="Type or paste knowledge base content here, or upload a PDF above..."
-                  className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-sm min-h-[200px]"
+                  className="flex-1 w-full p-4 rounded-xl border border-zinc-200 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm font-mono text-sm min-h-[200px] bg-white text-zinc-800 placeholder:text-zinc-400"
                 />
               </div>
             </div>
