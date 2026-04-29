@@ -577,18 +577,29 @@ export default function AgentDashboard() {
               </div>
             </div>
             {tickets.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                  <CheckCircle size={24} className="text-slate-400" />
+              <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+                <div className="relative mb-5">
+                  <div className="w-20 h-20 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-sm">
+                    <CheckCircle2 size={36} className="text-emerald-500" />
+                  </div>
+                  <div className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-emerald-400 border-2 border-white flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">0</span>
+                  </div>
                 </div>
-                Inbox Zero!
+                <p className="font-semibold text-slate-700 text-sm">You're all caught up!</p>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-[180px]">
+                  No open tickets right now. New escalations will appear here automatically.
+                </p>
               </div>
             ) : filteredTickets.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-sm flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                  <CheckCircle size={24} className="text-slate-400" />
+              <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center mb-4 shadow-sm">
+                  <MessageSquare size={28} className="text-slate-400" />
                 </div>
-                No tickets match your search.
+                <p className="font-semibold text-slate-600 text-sm">No matches found</p>
+                <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-[180px]">
+                  Try adjusting your search or filter to find what you're looking for.
+                </p>
               </div>
             ) : (
               filteredTickets.map(ticket => {
@@ -803,11 +814,32 @@ export default function AgentDashboard() {
               </div>
             </div>
           ) : !selectedTicket ? (
-            <div className="flex-1 flex items-center justify-center text-slate-400 flex-col gap-4 animate-in fade-in duration-700 bg-slate-50">
-              <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200 shadow-sm">
-                <MessageSquare size={28} className="text-slate-400" />
+            <div className="flex-1 flex items-center justify-center bg-slate-50 animate-in fade-in duration-500">
+              <div className="flex flex-col items-center text-center max-w-sm px-8">
+                {/* Illustration */}
+                <div className="relative mb-6">
+                  <div className="w-24 h-24 rounded-3xl bg-white border border-slate-200 shadow-md flex items-center justify-center">
+                    <MessageSquare size={36} className="text-blue-400" />
+                  </div>
+                  {/* decorative bubbles */}
+                  <div className="absolute -top-2 -right-3 w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shadow-sm">
+                    <Bot size={14} className="text-blue-400" />
+                  </div>
+                  <div className="absolute -bottom-2 -left-3 w-7 h-7 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shadow-sm">
+                    <CheckCircle2 size={13} className="text-emerald-400" />
+                  </div>
+                </div>
+                <p className="font-semibold text-slate-700 text-base">No conversation open</p>
+                <p className="text-sm text-slate-400 mt-2 leading-relaxed">
+                  Select a ticket from the inbox to view the full conversation and reply to the customer.
+                </p>
+                {tickets.length > 0 && (
+                  <div className="mt-5 flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-600 font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                    {tickets.filter(t => t.status !== 'resolved').length} ticket{tickets.filter(t => t.status !== 'resolved').length !== 1 ? 's' : ''} waiting in queue
+                  </div>
+                )}
               </div>
-              <p className="font-medium text-slate-500">Select a ticket to join the conversation.</p>
             </div>
           ) : (
             <div className="flex-1 flex overflow-hidden">
