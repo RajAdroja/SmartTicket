@@ -32,6 +32,7 @@ export default function AgentDashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // Transfer modal state
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -46,6 +47,11 @@ export default function AgentDashboard() {
   useEffect(() => {
     const interval = setInterval(() => setTimerTick(t => t + 1), 30_000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Close shared AudioContext on unmount
+  useEffect(() => {
+    return () => { audioCtxRef.current?.close(); };
   }, []);
 
   // Unread counts per ticket — track last-viewed message count
@@ -75,7 +81,11 @@ export default function AgentDashboard() {
   const playChime = useCallback(() => {
     if (!soundEnabled) return;
     try {
-      const ctx = new AudioContext();
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        audioCtxRef.current = new AudioContext();
+      }
+      const ctx = audioCtxRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
       const frequencies = [523.25, 659.25, 783.99];
       frequencies.forEach((freq, i) => {
         const osc = ctx.createOscillator();
