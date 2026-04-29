@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
-import { useTickets, Message } from '../../context/TicketContext';
+import { useTickets, Message, type EscalationExplainability } from '../../context/TicketContext';
 import type { ChatApiResponseContract } from '../../lib/ai-contract';
 
 const API_URL = 'http://localhost:5001';
@@ -25,6 +25,13 @@ function formatMsgTime(createdAt?: string): string {
   const isToday = date.toDateString() === now.toDateString();
   const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   return isToday ? time : `${date.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
+
+function getTriggerSourceFromReason(reason?: ChatApiResponseContract['decision']['escalationReason']): EscalationExplainability['escalationTriggerSource'] {
+  if (reason === 'user_requested_human') return 'user_request';
+  if (reason === 'sensitive_account_action') return 'policy_rule';
+  if (reason === 'low_confidence') return 'confidence_rule';
+  return 'model_signal';
 }
 
 export default function ChatWidget() {
@@ -199,9 +206,15 @@ export default function ChatWidget() {
         
         const finalHistory = [...updatedHistory, escalationMsg];
         setMessages(finalHistory);
+        const explainability: EscalationExplainability = {
+          lastAiConfidenceScore: data.decision?.confidenceScore,
+          lastAiConfidenceLabel: data.decision?.confidenceLabel,
+          escalationReason: data.decision?.escalationReason,
+          escalationTriggerSource: getTriggerSourceFromReason(data.decision?.escalationReason),
+        };
         
         joinTicketRoom(newId);
-        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY });
+        escalateTicket(newId, "Customer", updatedHistory, { name: "Customer", email: "", company: MOCK_CUSTOMER_COMPANY }, explainability);
       } else if (data.suggestResolution) {
         markAiResolved();
         localStorage.removeItem('smartTicket_messages');
@@ -233,7 +246,16 @@ export default function ChatWidget() {
     
     joinTicketRoom(newId);
     
-    escalateTicket(newId, 'Customer', finalHistory, { name: 'Customer', email: '', company: '' });
+    escalateTicket(
+      newId,
+      'Customer',
+      finalHistory,
+      { name: 'Customer', email: '', company: MOCK_CUSTOMER_COMPANY },
+      {
+        escalationReason: 'user_requested_human',
+        escalationTriggerSource: 'user_request',
+      }
+    );
   };
 
   const handleDownloadTranscript = () => {

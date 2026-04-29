@@ -23,6 +23,17 @@ export interface Ticket {
     email: string;
     company: string;
   };
+  lastAiConfidenceScore?: number;
+  lastAiConfidenceLabel?: 'high' | 'medium' | 'low';
+  escalationReason?: 'none' | 'missing_kb_info' | 'sensitive_account_action' | 'user_requested_human' | 'frustration_detected' | 'low_confidence';
+  escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
+}
+
+export interface EscalationExplainability {
+  lastAiConfidenceScore?: number;
+  lastAiConfidenceLabel?: 'high' | 'medium' | 'low';
+  escalationReason?: 'none' | 'missing_kb_info' | 'sensitive_account_action' | 'user_requested_human' | 'frustration_detected' | 'low_confidence';
+  escalationTriggerSource?: 'user_request' | 'confidence_rule' | 'policy_rule' | 'model_signal';
 }
 
 export interface Metrics {
@@ -54,7 +65,7 @@ interface TicketContextType {
   onlineAgents: OnlineAgent[];
   transferNotification: TransferNotification | null;
   clearTransferNotification: () => void;
-  escalateTicket: (ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }) => void;
+  escalateTicket: (ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }, explainability?: EscalationExplainability) => void;
   sendAgentReply: (ticketId: string, message: Message) => void;
   resolveTicket: (ticketId: string) => void;
   joinTicketRoom: (ticketId: string) => void;
@@ -157,12 +168,23 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  const escalateTicket = useCallback((ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }) => {
+  const escalateTicket = useCallback((ticketId: string, customerName: string, chatHistory: Message[], userProfile: { name: string, email: string, company: string }, explainability?: EscalationExplainability) => {
     if (socket) {
-      socket.emit('escalate_ticket', { ticketId, customerName, chatHistory, userProfile });
+      socket.emit('escalate_ticket', { ticketId, customerName, chatHistory, userProfile, explainability });
       setTickets(prev => [
         ...prev,
-        { id: ticketId, customerName, status: 'active', messages: chatHistory, escalatedAt: new Date(), userProfile }
+        {
+          id: ticketId,
+          customerName,
+          status: 'active',
+          messages: chatHistory,
+          escalatedAt: new Date(),
+          userProfile,
+          lastAiConfidenceScore: explainability?.lastAiConfidenceScore,
+          lastAiConfidenceLabel: explainability?.lastAiConfidenceLabel,
+          escalationReason: explainability?.escalationReason,
+          escalationTriggerSource: explainability?.escalationTriggerSource,
+        }
       ]);
     }
   }, [socket]);
