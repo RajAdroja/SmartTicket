@@ -267,6 +267,28 @@ export default function ChatWidget() {
     !attachment &&
     visibleMessages.length <= 1;
 
+  // Proactive trigger — auto-open after 30s if user hasn't opened chat yet this session
+  useEffect(() => {
+    if (isOpen || isResolved || ticketId) return;
+    const alreadyTriggered = sessionStorage.getItem('smartticket_proactive_shown');
+    if (alreadyTriggered) return;
+    const timer = setTimeout(() => {
+      sessionStorage.setItem('smartticket_proactive_shown', '1');
+      setIsOpen(true);
+      // Add a proactive message if chat is still at the initial state
+      setMessages(prev => {
+        if (prev.length === 1 && prev[0].sender === 'bot') {
+          return [
+            ...prev,
+            { id: `proactive-${Date.now()}`, sender: 'bot', text: '👋 Need help? I\'m here if you have any questions!' }
+          ];
+        }
+        return prev;
+      });
+    }, 30_000);
+    return () => clearTimeout(timer);
+  }, [isOpen, isResolved, ticketId]);
+
   return (
     <>
       {zoomedImage && (
