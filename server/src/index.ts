@@ -11,6 +11,7 @@ import {
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
+import { ChatApiResponseSchema, DEFAULT_FEEDBACK_OPTIONS, labelFromScore } from './ai-contract';
 
 dotenv.config();
 
@@ -30,8 +31,28 @@ app.post('/api/chat', async (req, res) => {
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Invalid messages format' });
   }
+
   const { reply, suggestEscalation, suggestResolution } = await generateChatResponse(messages, company);
-  res.json({ reply, suggestEscalation, suggestResolution });
+  // Phase 1 contract defaults: future phases will replace heuristic scoring.
+  const confidenceScore = suggestEscalation ? 35 : suggestResolution ? 90 : 72;
+  const confidenceLabel = labelFromScore(confidenceScore);
+  const escalationReason = suggestEscalation ? 'low_confidence' : 'none';
+  const recommendedAction = suggestEscalation ? 'auto_escalate' : confidenceLabel === 'medium' ? 'offer_human' : 'continue_ai';
+
+  const payload = ChatApiResponseSchema.parse({
+    reply,
+    suggestEscalation,
+    suggestResolution,
+    decision: {
+      confidenceScore,
+      confidenceLabel,
+      escalationReason,
+      recommendedAction,
+    },
+    feedbackOptions: DEFAULT_FEEDBACK_OPTIONS,
+  });
+
+  res.json(payload);
 });
 
 app.get('/api/tickets', async (req, res) => {
