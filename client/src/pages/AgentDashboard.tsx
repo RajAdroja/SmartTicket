@@ -79,6 +79,9 @@ export default function AgentDashboard() {
   // Incoming transfer toast
   const [incomingTransfer, setIncomingTransfer] = useState<{ ticketId: string; fromAgentName: string; note: string } | null>(null);
 
+  // Outgoing transfer success toast
+  const [transferSuccess, setTransferSuccess] = useState<{ toAgentName: string } | null>(null);
+
   // Close shared AudioContext on unmount
   useEffect(() => {
     return () => { audioCtxRef.current?.close(); };
@@ -327,11 +330,14 @@ export default function AgentDashboard() {
 
   const handleTransferSubmit = () => {
     if (!selectedTicketId || !transferTargetId) return;
+    const targetAgent = onlineAgents.find(a => a.agentId === transferTargetId);
     transferTicket(selectedTicketId, transferTargetId, transferNote.trim());
     setShowTransferModal(false);
     setTransferTargetId('');
     setTransferNote('');
     setSelectedTicketId(null);
+    setTransferSuccess({ toAgentName: targetAgent?.name ?? 'the agent' });
+    setTimeout(() => setTransferSuccess(null), 5000);
   };
 
   return (
@@ -468,6 +474,24 @@ export default function AgentDashboard() {
             </div>
             <button onClick={() => setIncomingTransfer(null)} className="text-slate-400 hover:text-slate-600 shrink-0 p-0.5">
               <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Transfer success toast */}
+      {transferSuccess && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-3.5 flex items-center gap-3 min-w-[260px]">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+              <CheckCircle2 size={15} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">Ticket transferred</p>
+              <p className="text-xs text-slate-400 mt-0.5">Handed off to <span className="text-slate-200 font-medium">{transferSuccess.toAgentName}</span></p>
+            </div>
+            <button onClick={() => setTransferSuccess(null)} className="text-slate-500 hover:text-slate-300 transition-colors p-0.5">
+              <X size={14} />
             </button>
           </div>
         </div>
