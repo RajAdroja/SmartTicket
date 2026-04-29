@@ -39,6 +39,17 @@ function confidenceBadgeClass(label?: Ticket['lastAiConfidenceLabel']): string {
   return 'bg-slate-100 text-slate-500 border-slate-200';
 }
 
+interface FeedbackAnalytics {
+  totalFeedback: number;
+  helpfulCount: number;
+  unhelpfulCount: number;
+  helpfulRate: number;
+  lowConfidenceSampleSize: number;
+  lowConfidenceHelpfulRate: number;
+  topNegativeReasons: Array<{ reason: string; count: number }>;
+  kbImprovementSuggestions: Array<{ reason: string; count: number; suggestion: string }>;
+}
+
 // SLA thresholds: < 30 min = ok, 30–60 min = approaching, > 60 min = breached
 function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
   const [, tick] = useState(0);
@@ -96,6 +107,7 @@ export default function AgentDashboard() {
   const [ticketEscalationFilter, setTicketEscalationFilter] = useState<'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human'>('all');
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const [selectedKbCompany, setSelectedKbCompany] = useState('global');
+  const [feedbackAnalytics, setFeedbackAnalytics] = useState<FeedbackAnalytics | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
   const prevTicketCountRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -278,6 +290,14 @@ export default function AgentDashboard() {
         .then(data => setKbText(data.kb || ''))
     }
   }, [activeTab, selectedKbCompany]);
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return;
+    fetch(`${API_URL}/api/metrics/feedback`)
+      .then(res => res.json())
+      .then(data => setFeedbackAnalytics(data))
+      .catch(() => setFeedbackAnalytics(null));
+  }, [activeTab]);
 
   const handleSaveKb = () => {
     setIsSavingKb(true);
@@ -850,6 +870,57 @@ export default function AgentDashboard() {
                     Based on {metrics.csatCount} reviews
                   </span>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Helpful Rate</p>
+                  <p className="text-2xl font-bold text-zinc-900 mt-2">
+                    {feedbackAnalytics ? `${Math.round(feedbackAnalytics.helpfulRate * 100)}%` : 'N/A'}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {feedbackAnalytics ? `${feedbackAnalytics.helpfulCount}/${feedbackAnalytics.totalFeedback} marked helpful` : 'No feedback submitted yet'}
+                  </p>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Low Confidence Helpful Rate</p>
+                  <p className="text-2xl font-bold text-zinc-900 mt-2">
+                    {feedbackAnalytics ? `${Math.round(feedbackAnalytics.lowConfidenceHelpfulRate * 100)}%` : 'N/A'}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {feedbackAnalytics ? `Sample size: ${feedbackAnalytics.lowConfidenceSampleSize}` : 'No low-confidence samples yet'}
+                  </p>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-zinc-200 shadow-sm">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Top Negative Signals</p>
+                  <p className="text-2xl font-bold text-zinc-900 mt-2">
+                    {feedbackAnalytics ? feedbackAnalytics.topNegativeReasons.length : 0}
+                  </p>
+                  <p className="text-xs text-zinc-400 mt-1">
+                    {feedbackAnalytics?.topNegativeReasons?.[0]
+                      ? `${feedbackAnalytics.topNegativeReasons[0].reason.replaceAll('_', ' ')} (${feedbackAnalytics.topNegativeReasons[0].count})`
+                      : 'No negative signals yet'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                <h2 className="text-lg font-semibold text-zinc-900">KB Improvement Suggestions</h2>
+                <p className="text-sm text-zinc-500 mt-1">Suggestions generated from top negative feedback reasons.</p>
+                {feedbackAnalytics?.kbImprovementSuggestions?.length ? (
+                  <div className="mt-4 space-y-3">
+                    {feedbackAnalytics.kbImprovementSuggestions.map(item => (
+                      <div key={item.reason} className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+                        <p className="text-sm font-semibold text-zinc-800">
+                          {item.reason.replaceAll('_', ' ')} <span className="text-zinc-400 font-normal">({item.count})</span>
+                        </p>
+                        <p className="text-sm text-zinc-600 mt-1">{item.suggestion}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-400 mt-4">No KB suggestions yet. Collect more AI feedback to generate recommendations.</p>
+                )}
               </div>
             </div>
           ) : activeTab === 'knowledge' ? (
