@@ -23,14 +23,14 @@ function App() {
           }}
         >
           <Routes>
-            {/* If Mode is 'agent', this site is ONLY the dashboard */}
-            {import.meta.env.VITE_APP_MODE === 'agent' ? (
+            {/* If user connects via port 5174 OR VITE_APP_MODE is 'agent', show Agent Dashboard */}
+            {isAgentPort || import.meta.env.VITE_APP_MODE === 'agent' ? (
               <>
                 <Route path="/" element={<AgentDashboard />} />
                 <Route path="*" element={<AgentDashboard />} />
               </>
             ) : (
-              /* If Mode is 'customer' (default), this site is the customer view + widget */
+              /* If user connects via port 5173 (default), show customer view + widget */
               <>
                 <Route path="/" element={<CustomerView />} />
                 <Route path="/settings" element={<Settings />} />
