@@ -263,7 +263,16 @@ export default function AgentDashboard() {
   };
 
 
-  const filteredTickets = [...tickets].reverse().filter(ticket => {
+  const filteredTickets = [...tickets]
+    .sort((a, b) => {
+      // Priority order: urgent > high > normal > low
+      const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 };
+      const priorityDiff = (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
+      if (priorityDiff !== 0) return priorityDiff;
+      // Then by most recent
+      return new Date(b.escalatedAt).getTime() - new Date(a.escalatedAt).getTime();
+    })
+    .filter(ticket => {
     const normalized = normalizeStatus(ticket.status);
     if (ticketStatusFilter !== 'all' && normalized !== ticketStatusFilter) {
       return false;
