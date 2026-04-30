@@ -1597,34 +1597,33 @@ export default function AgentDashboard() {
                     </>
                   ) : null}
                   {!isLoadingMessages && selectedTicket.messages.map((msg) => {
-                    const isAgent = msg.sender === 'agent';
-                    const isBot = msg.sender === 'bot';
+                    const isStaff = msg.sender === 'agent' || msg.sender === 'bot';
                     
                     return (
-                      <div key={msg.id} className={`flex w-full px-4 mb-2 animate-in slide-in-from-bottom-2 fade-in duration-300 ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex flex-col ${isAgent ? 'items-end' : 'items-start'} max-w-[85%]`}>
+                      <div key={msg.id} className={`flex w-full px-4 mb-2 animate-in slide-in-from-bottom-2 fade-in duration-300 ${isStaff ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex flex-col ${isStaff ? 'items-end' : 'items-start'} max-w-[85%]`}>
                         <div className={`p-4 rounded-2xl relative group shadow-sm border ${
-                          isAgent 
+                          isStaff 
                             ? (msg.isInternal 
                                 ? 'bg-amber-50 text-amber-900 rounded-tr-sm border-amber-200' 
-                                : 'bg-green-50 text-green-900 rounded-tr-sm border-green-200') 
-                            : isBot 
-                              ? 'bg-slate-50 text-slate-700 rounded-tl-sm border-slate-200'
-                              : 'bg-indigo-50 text-indigo-900 border-indigo-200 rounded-tl-sm'
+                                : msg.sender === 'bot'
+                                  ? 'bg-slate-50 text-slate-700 rounded-tr-sm border-slate-200'
+                                  : 'bg-green-50 text-green-900 rounded-tr-sm border-green-200') 
+                            : 'bg-indigo-50 text-indigo-900 border-indigo-200 rounded-tl-sm'
                         }`}>
                           {msg.isInternal && (
                             <div className="absolute -top-3 right-4 flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider shadow-sm">
                               <EyeOff size={10} /> Internal Note
                             </div>
                           )}
-                          <div className={`text-[10px] mb-1.5 font-extrabold uppercase tracking-widest ${isAgent ? 'text-right' : 'text-left'} ${
-                            isAgent 
-                              ? (msg.isInternal ? 'text-amber-600' : 'text-green-600') 
-                              : isBot ? 'text-slate-500' : 'text-indigo-600'
+                          <div className={`text-[10px] mb-1.5 font-extrabold uppercase tracking-widest ${isStaff ? 'text-right' : 'text-left'} ${
+                            isStaff 
+                              ? (msg.isInternal ? 'text-amber-600' : msg.sender === 'bot' ? 'text-slate-500' : 'text-green-600') 
+                              : 'text-indigo-600'
                           }`}>
-                            {isAgent ? (msg.isInternal ? 'You (Internal Note)' : 'You (Agent)') : isBot ? 'AI Assistant' : 'Customer'}
+                            {msg.sender === 'agent' ? (msg.isInternal ? 'You (Internal Note)' : 'You (Agent)') : msg.sender === 'bot' ? 'AI Assistant' : 'Customer'}
                           </div>
-                          {msg.text && <div className={`text-[15px] leading-relaxed whitespace-pre-wrap ${isAgent ? 'text-right' : 'text-left'}`}>{msg.text}</div>}
+                          {msg.text && <div className={`text-[15px] leading-relaxed whitespace-pre-wrap ${isStaff ? 'text-right' : 'text-left'}`}>{msg.text}</div>}
                           {msg.attachment && (
                             <img
                               src={msg.attachment}
@@ -1635,9 +1634,9 @@ export default function AgentDashboard() {
                           )}
                           {formatMsgTime(msg.createdAt) && (
                             <div className={`text-[10px] mt-1.5 ${
-                              isAgent 
-                                ? (msg.isInternal ? 'text-amber-500' : 'text-green-500') 
-                                : isBot ? 'text-slate-400' : 'text-indigo-400'
+                              isStaff 
+                                ? (msg.isInternal ? 'text-amber-500' : msg.sender === 'bot' ? 'text-slate-400' : 'text-green-500') 
+                                : 'text-indigo-400'
                             }`}>
                               {formatMsgTime(msg.createdAt)}
                             </div>
