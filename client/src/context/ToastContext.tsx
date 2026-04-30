@@ -39,13 +39,13 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastContext.Provider value={contextValue}>
       {children}
-      <Snackbar
-        open={Boolean(activeToast)}
-        autoHideDuration={activeToast?.autoHideDuration ?? 4500}
-        onClose={handleClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        {activeToast ? (
+      {activeToast && (
+        <Snackbar
+          open
+          autoHideDuration={activeToast.autoHideDuration ?? 4500}
+          onClose={handleClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
           <Alert
             severity={activeToast.severity ?? 'info'}
             variant="filled"
@@ -54,8 +54,8 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
           >
             {activeToast.message}
           </Alert>
-        ) : null}
-      </Snackbar>
+        </Snackbar>
+      )}
     </ToastContext.Provider>
   );
 };
