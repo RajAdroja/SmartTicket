@@ -70,8 +70,14 @@
   * {
     @apply border-border;
   }
-  body {
+  body:not(.is-widget) {
     @apply bg-background text-foreground;
+  }
+  body.is-widget {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+  body {
     font-family: "Unica77 Cohere Web", "Inter", Arial, ui-sans-serif, system-ui, sans-serif;
   }
 }

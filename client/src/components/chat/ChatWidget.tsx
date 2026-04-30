@@ -98,6 +98,14 @@ export default function ChatWidget({ isEmbedded = false }: { isEmbedded?: boolea
   const [attachment, setAttachment] = useState<string | null>(null);
   const [latestDecision, setLatestDecision] = useState<ChatApiResponseContract['decision'] | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Add class to body to handle transparent background in CSS
+    document.body.classList.add('is-widget');
+    return () => {
+      document.body.classList.remove('is-widget');
+    };
+  }, []);
   const [unreadCount, setUnreadCount] = useState(0);
   const prevAgentMsgCountRef = useRef(0);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

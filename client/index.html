@@ -7,10 +7,10 @@
     <title>Smart Ticket</title>
     <!-- Inline script: runs BEFORE React, prevents dark canvas on /widget route -->
     <script>
-      if (window.location.pathname.startsWith('/widget')) {
-        document.documentElement.style.setProperty('background', 'transparent', 'important');
-        document.documentElement.style.setProperty('background-color', 'transparent', 'important');
-        document.documentElement.style.setProperty('color-scheme', 'light');
+      // Force transparency immediately for widget routes
+      if (window.location.pathname.includes('widget') || window.location.search.includes('isEmbedded=true')) {
+        document.documentElement.style.background = 'transparent';
+        document.documentElement.style.backgroundColor = 'transparent';
         var s = document.createElement('style');
         s.textContent = 'html, body, #root { background: transparent !important; background-color: transparent !important; }';
         document.head.appendChild(s);
