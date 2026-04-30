@@ -110,6 +110,7 @@ export default function AgentDashboard() {
   const [selectedKbCompany, setSelectedKbCompany] = useState('');
   const [feedbackAnalytics, setFeedbackAnalytics] = useState<FeedbackAnalytics | null>(null);
   const [analyticsCompanyFilter, setAnalyticsCompanyFilter] = useState<string>('all');
+  const [agentPerformance, setAgentPerformance] = useState<any[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('agent_sound') !== 'false');
   const [timeseriesMetrics, setTimeseriesMetrics] = useState<any[]>([]);
   const [timeseriesDays, setTimeseriesDays] = useState(30);
@@ -356,6 +357,18 @@ export default function AgentDashboard() {
       .then(res => res.json())
       .then(data => setTimeseriesMetrics(data || []))
       .catch(() => setTimeseriesMetrics([]));
+    
+    // Fetch agent performance
+    fetch(`${API_URL}/api/metrics/agents`)
+      .then(res => res.json())
+      .then(data => {
+        console.log('Agent performance data:', data);
+        setAgentPerformance(data || []);
+      })
+      .catch(err => {
+        console.error('Failed to fetch agent performance:', err);
+        setAgentPerformance([]);
+      });
   }, [activeTab, timeseriesDays]);
 
   // Auto-select first available company for KB editor when tickets load
@@ -1405,6 +1418,62 @@ export default function AgentDashboard() {
                   <p className="text-sm text-zinc-400 text-center py-8">No historical data yet. Check back tomorrow!</p>
                 )}
               </div>
+
+              {/* Agent Performance Leaderboard */}
+              <div className="bg-white p-6 rounded-xl border border-zinc-200 shadow-sm">
+                <h2 className="text-base font-semibold text-zinc-900 mb-4">Agent Performance Leaderboard</h2>
+                {agentPerformance.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-zinc-200">
+                          <th className="text-left py-3 px-4 font-semibold text-zinc-700">Agent</th>
+                          <th className="text-center py-3 px-4 font-semibold text-zinc-700">Tickets</th>
+                          <th className="text-center py-3 px-4 font-semibold text-zinc-700">Resolution Rate</th>
+                          <th className="text-center py-3 px-4 font-semibold text-zinc-700">Avg Response Time</th>
+                          <th className="text-center py-3 px-4 font-semibold text-zinc-700">Avg Resolution Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agentPerformance.map((agent, idx) => (
+                          <tr key={agent.agentId} className={`border-b border-zinc-100 ${idx % 2 === 0 ? 'bg-zinc-50' : 'bg-white'}`}>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">
+                                  {agent.agentName.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="font-medium text-zinc-900">{agent.agentName}</span>
+                              </div>
+                            </td>
+                            <td className="text-center py-3 px-4 text-zinc-700">{agent.totalTickets}</td>
+                            <td className="text-center py-3 px-4">
+                              <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                agent.resolutionRate >= 80 ? 'bg-emerald-100 text-emerald-700' :
+                                agent.resolutionRate >= 60 ? 'bg-amber-100 text-amber-700' :
+                                'bg-rose-100 text-rose-700'
+                              }`}>
+                                {agent.resolutionRate}%
+                              </span>
+                            </td>
+                            <td className="text-center py-3 px-4 text-zinc-700">
+                              {agent.avgResponseTimeMs > 0 
+                                ? `${Math.round(agent.avgResponseTimeMs / 1000)}s`
+                                : 'N/A'}
+                            </td>
+                            <td className="text-center py-3 px-4 text-zinc-700">
+                              {agent.avgResolutionTimeMs > 0
+                                ? `${Math.round(agent.avgResolutionTimeMs / 60000)}m`
+                                : 'N/A'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-400">No agent performance data yet. Assign tickets to agents to see metrics.</p>
+                )}
+              </div>
             </div>
           ) : activeTab === 'setup' ? (
             <div className="p-8 max-w-4xl mx-auto w-full animate-in fade-in flex flex-col h-full gap-5">
@@ -1462,6 +1531,7 @@ export default function AgentDashboard() {
                   </p>
                 </div>
               </div>
+
             </div>
           ) : activeTab === 'knowledge' ? (
             <div className="p-8 max-w-4xl mx-auto w-full animate-in fade-in flex flex-col h-full gap-5">

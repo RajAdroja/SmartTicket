@@ -11,7 +11,7 @@ import {
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent,
   createCannedResponse, getCannedResponses, updateCannedResponse, deleteCannedResponse, incrementCannedResponseUsage,
-  saveMetricsSnapshot, getMetricsTimeSeries, calculateAverageResolutionTime, updateTicketPriority
+  saveMetricsSnapshot, getMetricsTimeSeries, calculateAverageResolutionTime, updateTicketPriority, getAgentPerformance
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -344,6 +344,16 @@ app.get('/api/metrics/feedback', async (_req, res) => {
     return res.status(503).json({ error: 'Feedback loop is disabled' });
   }
   res.json(await getFeedbackAnalytics());
+});
+
+app.get('/api/metrics/agents', async (_req, res) => {
+  try {
+    const agentPerformance = await getAgentPerformance();
+    res.json(agentPerformance);
+  } catch (err) {
+    console.error('Error fetching agent performance:', err);
+    res.status(500).json({ error: 'Failed to fetch agent performance' });
+  }
 });
 
 app.get('/api/feature-flags', (_req, res) => {

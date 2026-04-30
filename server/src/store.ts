@@ -459,3 +459,89 @@ export const calculateAverageResolutionTime = async () => {
   
   return Math.round(totalMs / resolved.length);
 };
+
+export const getAgentPerformance = async () => {
+  const tickets = await TicketModel.find({ assignedAgentId: { $exists: true, $ne: null } })
+    .select('assignedAgentId assignedAgentName status escalatedAt updatedAt messages')
+    .lean() as any[];
+  
+  const agentStats: Record<string, {
+    agentId: string;
+    agentName: string;
+    totalTickets: number;
+    resolvedTickets: number;
+    resolutionRate: number;
+    avgResolutionTimeMs: number;
+    avgResponseTimeMs: number;
+    csatScore: number;
+  }> = {};
+  
+  // Group tickets by agent
+  tickets.forEach(ticket => {
+    const agentId = ticket.assignedAgentId;
+    const agentName = ticket.assignedAgentName || 'Unknown';
+    
+    if (!agentStats[agentId]) {
+      agentStats[agentId] = {
+        agentId,
+        agentName,
+        totalTickets: 0,
+        resolvedTickets: 0,
+        resolutionRate: 0,
+        avgResolutionTimeMs: 0,
+        avgResponseTimeMs: 0,
+        csatScore: 0,
+      };
+    }
+    
+    agentStats[agentId].totalTickets++;
+    
+    if (ticket.status === 'resolved') {
+      agentStats[agentId].resolvedTickets++;
+    }
+  });
+  
+  // Calculate metrics for each agent
+  for (const agentId in agentStats) {
+    const stats = agentStats[agentId];
+    const agentTickets = tickets.filter(t => t.assignedAgentId === agentId);
+    
+    // Resolution rate
+    stats.resolutionRate = stats.totalTickets > 0 
+      ? Math.round((stats.resolvedTickets / stats.totalTickets) * 100) 
+      : 0;
+    
+    // Average resolution time (for resolved tickets)
+    const resolvedTickets = agentTickets.filter(t => t.status === 'resolved');
+    if (resolvedTickets.length > 0) {
+      const totalMs = resolvedTickets.reduce((sum, ticket) => {
+        const escalated = new Date(ticket.escalatedAt).getTime();
+        const updated = ticket.updatedAt ? new Date(ticket.updatedAt).getTime() : new Date().getTime();
+        return sum + (updated - escalated);
+      }, 0);
+      stats.avgResolutionTimeMs = Math.round(totalMs / resolvedTickets.length);
+    }
+    
+    // Average response time (time from escalation to first agent message)
+    if (agentTickets.length > 0) {
+      const responseTimes = agentTickets
+        .map(ticket => {
+          const agentMsg = ticket.messages?.find((m: any) => m.sender === 'agent');
+          if (!agentMsg) return null;
+          const escalatedTime = new Date(ticket.escalatedAt).getTime();
+          const msgTime = new Date(agentMsg.createdAt || ticket.escalatedAt).getTime();
+          return msgTime - escalatedTime;
+        })
+        .filter((t: any) => t !== null && t >= 0) as number[];
+      
+      if (responseTimes.length > 0) {
+        stats.avgResponseTimeMs = Math.round(
+          responseTimes.reduce((a: number, b: number) => a + b, 0) / responseTimes.length
+        );
+      }
+    }
+  }
+  
+  // Sort by resolution rate (descending)
+  return Object.values(agentStats).sort((a, b) => b.resolutionRate - a.resolutionRate);
+};
