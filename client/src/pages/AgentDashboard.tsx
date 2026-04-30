@@ -86,7 +86,7 @@ function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
 }
 
 export default function AgentDashboard() {
-  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, agentName, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus, assignTicket } = useTickets();
+  const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, updateTicketPriority, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, agentName, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus, assignTicket } = useTickets();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [reply, setReply] = useState('');
@@ -919,6 +919,17 @@ export default function AgentDashboard() {
                           <Badge variant="secondary" className={`text-[9px] py-0 h-4 border ${statusBadgeClass(ticket.status)}`}>
                             {statusLabel(ticket.status)}
                           </Badge>
+                          {/* Priority badge */}
+                          {ticket.priority && (
+                            <Badge variant="outline" className={`text-[9px] py-0 h-4 font-semibold ${
+                              ticket.priority === 'urgent' ? 'bg-red-50 text-red-700 border-red-200' :
+                              ticket.priority === 'high' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                              ticket.priority === 'normal' ? 'bg-slate-50 text-slate-700 border-slate-200' :
+                              'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
+                            </Badge>
+                          )}
                           {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
                           {ticket.lastAiConfidenceLabel && (
                             <Badge variant="outline" className={`text-[9px] py-0 h-4 border ${confidenceBadgeClass(ticket.lastAiConfidenceLabel)}`}>
@@ -1549,6 +1560,33 @@ export default function AgentDashboard() {
                         })}
                       </>
                     )}
+                  </div>
+                </div>
+                {/* Priority Controls */}
+                <div className="px-8 pb-4 pt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-600">Priority:</span>
+                    <div className="flex gap-1.5">
+                      {(['urgent', 'high', 'normal', 'low'] as const).map(priorityOption => {
+                        const priorityStyles: Record<typeof priorityOption, { label: string; cls: string }> = {
+                          'urgent': { label: 'Urgent', cls: 'bg-red-100 hover:bg-red-200 text-red-700 border-red-300' },
+                          'high': { label: 'High', cls: 'bg-orange-100 hover:bg-orange-200 text-orange-700 border-orange-300' },
+                          'normal': { label: 'Normal', cls: 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' },
+                          'low': { label: 'Low', cls: 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300' },
+                        };
+                        const s = priorityStyles[priorityOption];
+                        const isActive = selectedTicket.priority === priorityOption;
+                        return (
+                          <Button
+                            key={priorityOption}
+                            onClick={() => updateTicketPriority(selectedTicket.id, priorityOption)}
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-md border transition-all duration-150 ${s.cls} ${isActive ? 'ring-2 ring-offset-1 ring-slate-400' : ''}`}
+                          >
+                            {s.label}
+                          </Button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
                 {selectedTicket.summary && (

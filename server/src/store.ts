@@ -16,6 +16,7 @@ export interface Ticket {
   id: string;
   customerName: string;
   status: 'open' | 'pending' | 'on-hold' | 'resolved' | 'active';
+  priority: 'urgent' | 'high' | 'normal' | 'low';
   messages: Message[];
   escalatedAt: Date;
   summary?: string;
@@ -49,6 +50,7 @@ const TicketSchema = new Schema<Ticket>({
   id: { type: String, required: true, unique: true },
   customerName: String,
   status: { type: String, enum: ['open', 'pending', 'on-hold', 'resolved', 'active'], default: 'open' },
+  priority: { type: String, enum: ['urgent', 'high', 'normal', 'low'], default: 'normal' },
   messages: [MessageSchema],
   escalatedAt: { type: Date, default: Date.now },
   summary: String,
@@ -191,6 +193,11 @@ export const assignTicketToAgent = async (ticketId: string, agentId: string, age
     { new: true }
   ).lean();
   return result as unknown as Ticket | null;
+};
+
+export const updateTicketPriority = async (ticketId: string, priority: Ticket['priority']): Promise<boolean> => {
+  const result = await TicketModel.updateOne({ id: ticketId }, { priority });
+  return result.modifiedCount > 0;
 };
 
 export const getMetrics = async () => {

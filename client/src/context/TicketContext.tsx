@@ -14,6 +14,7 @@ export interface Ticket {
   id: string;
   customerName: string;
   status: 'open' | 'pending' | 'on-hold' | 'resolved' | 'active';
+  priority: 'urgent' | 'high' | 'normal' | 'low';
   messages: Message[];
   escalatedAt: Date | string;
   summary?: string;
@@ -92,6 +93,7 @@ interface TicketContextType {
   typingIndicators: Record<string, { user: boolean; agent: boolean }>;
   sendTypingStatus: (ticketId: string, isTyping: boolean, sender: 'user' | 'agent') => void;
   updateTicketStatus: (ticketId: string, status: Ticket['status']) => void;
+  updateTicketPriority: (ticketId: string, priority: Ticket['priority']) => void;
   submitCsat: (rating: number, ticketId?: string) => void;
   agentOnlineCount: number;
   transferTicket: (ticketId: string, toAgentId: string, note: string) => void;
@@ -173,6 +175,10 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
       setTickets(prev => prev.map(t => t.id === data.ticketId ? { ...t, status: data.status } : t));
     });
 
+    newSocket.on('ticket_priority_updated', (data: { ticketId: string, priority: Ticket['priority'] }) => {
+      setTickets(prev => prev.map(t => t.id === data.ticketId ? { ...t, priority: data.priority } : t));
+    });
+
     newSocket.on('metrics_updated', (data: Metrics) => {
       setMetrics(data);
     });
@@ -230,6 +236,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
           id: ticketId,
           customerName,
           status: 'active',
+          priority: 'normal',
           messages: chatHistory,
           escalatedAt: new Date(),
           userProfile,
@@ -265,6 +272,13 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
     if (socket) {
       socket.emit('update_ticket_status', { ticketId, status });
       setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t));
+    }
+  }, [socket]);
+
+  const updateTicketPriority = useCallback((ticketId: string, priority: Ticket['priority']) => {
+    if (socket) {
+      socket.emit('update_ticket_priority', { ticketId, priority });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, priority } : t));
     }
   }, [socket]);
 
@@ -327,7 +341,7 @@ export const TicketProvider = ({ children }: { children: ReactNode }) => {
   return (
     <TicketContext.Provider value={{ 
       tickets, socket, agentId, agentName: AGENT_NAME, agentStatus, setAgentStatus, onlineAgents, transferNotification, clearTransferNotification,
-      escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
+      escalateTicket, sendAgentReply, resolveTicket, updateTicketStatus, updateTicketPriority, joinTicketRoom, joinAgentRoom, metrics, markAiResolved,
       typingIndicators, sendTypingStatus, submitCsat, agentOnlineCount, transferTicket, assignTicket
     }}>
       {children}

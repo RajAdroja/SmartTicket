@@ -11,7 +11,7 @@ import {
   updateTicketStatus, Message, getMetrics, incrementEscalated, incrementHumanResolved, incrementAiResolved,
   submitCsat, getKnowledgeBase, setKnowledgeBase, TicketModel, submitAiFeedback, getFeedbackAnalytics, assignTicketToAgent,
   createCannedResponse, getCannedResponses, updateCannedResponse, deleteCannedResponse, incrementCannedResponseUsage,
-  saveMetricsSnapshot, getMetricsTimeSeries, calculateAverageResolutionTime
+  saveMetricsSnapshot, getMetricsTimeSeries, calculateAverageResolutionTime, updateTicketPriority
 } from './store';
 import { generateChatResponse, generateSummary, generateSmartReplies, generateTag } from './gemini';
 import { ChatApiResponseSchema, ChatDecisionSchema, DEFAULT_FEEDBACK_OPTIONS } from './ai-contract';
@@ -656,6 +656,7 @@ io.on('connection', (socket) => {
       id: ticketId,
       customerName,
       status: 'open' as const,
+      priority: 'normal' as const,
       messages: chatHistory,
       escalatedAt: new Date(),
       summary,
@@ -717,6 +718,14 @@ io.on('connection', (socket) => {
     if (updated) {
       io.to(data.ticketId).emit('ticket_status_updated', data);
       io.to('agents_room').emit('ticket_status_updated', data);
+    }
+  });
+
+  socket.on('update_ticket_priority', async (data: { ticketId: string, priority: 'urgent' | 'high' | 'normal' | 'low' }) => {
+    const updated = await updateTicketPriority(data.ticketId, data.priority);
+    if (updated) {
+      io.to(data.ticketId).emit('ticket_priority_updated', data);
+      io.to('agents_room').emit('ticket_priority_updated', data);
     }
   });
 
