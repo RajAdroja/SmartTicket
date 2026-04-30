@@ -1170,7 +1170,7 @@ export default function AgentDashboard() {
                         {new Date(ticket.escalatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div className={`text-xs w-full truncate block mt-1 ${isResolved ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <div className={`text-xs w-full line-clamp-2 whitespace-normal mt-1.5 leading-relaxed ${isResolved ? 'text-slate-400' : 'text-slate-500'}`}>
                       {ticket.messages[ticket.messages.length - 1]?.text || "No text content"}
                     </div>
                     </button>
