@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
@@ -12,6 +11,7 @@ import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
 import Header from '../components/layout/Header';
 import ChatWidget from '../components/chat/ChatWidget';
+import { useToast } from '../context/ToastContext';
 
 type CustomerSettings = {
   displayName: string;
@@ -47,7 +47,7 @@ const loadInitialSettings = (): CustomerSettings => {
 
 export default function Settings() {
   const [settings, setSettings] = useState<CustomerSettings>(loadInitialSettings);
-  const [saveState, setSaveState] = useState<'idle' | 'saved'>('idle');
+  const { showToast } = useToast();
 
   const update = <K extends keyof CustomerSettings>(key: K, value: CustomerSettings[K]) => {
     setSettings(prev => {
@@ -58,14 +58,13 @@ export default function Settings() {
       }
       return next;
     });
-    setSaveState('idle');
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
-    setSaveState('saved');
+    showToast({ message: 'Settings saved', severity: 'success' });
   };
 
   return (
@@ -133,7 +132,6 @@ export default function Settings() {
             </Paper>
 
             <Stack direction="row" spacing={2} sx={{ justifyContent: 'flex-end', alignItems: 'center' }}>
-              {saveState === 'saved' && <Alert severity="success">Settings saved</Alert>}
               <Button type="submit" variant="contained">
                 Save changes
               </Button>

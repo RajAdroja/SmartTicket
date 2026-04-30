@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline'
 import './index.css'
 import App from './App.tsx'
 import { createAppTheme } from './theme/theme'
+import { ToastProvider } from './context/ToastContext'
 
 type ThemePreference = 'system' | 'light' | 'dark'
 type SavedSettings = { theme?: ThemePreference }
@@ -74,7 +75,9 @@ function Root() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <App />
+      <ToastProvider>
+        <App />
+      </ToastProvider>
     </ThemeProvider>
   )
 }

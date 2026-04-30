@@ -4,6 +4,7 @@ import { User, Send, CheckCircle2, BarChart3, MessageSquare, Bot, Users, CheckCi
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { useToast } from '../context/ToastContext';
 
 import { API_URL } from '../config';
 
@@ -87,6 +88,7 @@ function SlaTimer({ escalatedAt }: { escalatedAt: Date | string }) {
 
 export default function AgentDashboard() {
   const { tickets, sendAgentReply, resolveTicket, updateTicketStatus, updateTicketPriority, joinAgentRoom, metrics, typingIndicators, sendTypingStatus, agentId, agentName, onlineAgents, transferTicket, transferNotification, clearTransferNotification, agentStatus, setAgentStatus, assignTicket } = useTickets();
+  const { showToast } = useToast();
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [reply, setReply] = useState('');
@@ -99,7 +101,6 @@ export default function AgentDashboard() {
   const [kbText, setKbText] = useState('');
   const [isSavingKb, setIsSavingKb] = useState(false);
   const [isPdfUploading, setIsPdfUploading] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
   const [ticketSearch, setTicketSearch] = useState('');
   const [ticketStatusFilter, setTicketStatusFilter] = useState<'all' | 'open' | 'pending' | 'on-hold' | 'resolved'>('all');
@@ -156,9 +157,6 @@ export default function AgentDashboard() {
   const [bulkActionType, setBulkActionType] = useState<'status' | 'priority' | 'assign' | null>(null);
   const [bulkActionValue, setBulkActionValue] = useState<string>('');
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
-
-  // Outgoing transfer success toast
-  const [transferSuccess, setTransferSuccess] = useState<{ toAgentName: string } | null>(null);
 
   // Close shared AudioContext on unmount
   useEffect(() => {
@@ -311,6 +309,136 @@ export default function AgentDashboard() {
     ].some(value => value.toLowerCase().includes(searchText));
   });
 
+  const sendCurrentReply = useCallback(() => {
+    if ((!reply.trim() && !attachment) || !selectedTicketId) return false;
+
+    sendAgentReply(selectedTicketId, {
+      id: Date.now().toString(),
+      sender: 'agent',
+      text: reply.trim(),
+      attachment: attachment || undefined,
+      isInternal,
+      createdAt: new Date().toISOString(),
+    });
+    setReply('');
+    setAttachment(null);
+    setIsInternal(false);
+    sendTypingStatus(selectedTicketId, false, 'agent');
+    return true;
+  }, [reply, attachment, selectedTicketId, sendAgentReply, isInternal, sendTypingStatus]);
+
+  const focusTicketSearch = useCallback(() => {
+    const searchInput = document.getElementById('agent-ticket-search') as HTMLInputElement | null;
+    if (!searchInput) return;
+    searchInput.focus();
+    searchInput.select();
+  }, []);
+
+  const focusTemplateSearch = useCallback(() => {
+    const templateInput = document.getElementById('agent-template-search') as HTMLInputElement | null;
+    templateInput?.focus();
+    templateInput?.select();
+  }, []);
+
+  const selectTicketByOffset = useCallback((offset: 1 | -1) => {
+    if (filteredTickets.length === 0) return;
+    const currentIndex = filteredTickets.findIndex(t => t.id === selectedTicketId);
+    const baseIndex = currentIndex === -1 ? (offset === 1 ? -1 : 0) : currentIndex;
+    const nextIndex = Math.max(0, Math.min(filteredTickets.length - 1, baseIndex + offset));
+    const nextTicket = filteredTickets[nextIndex];
+    if (!nextTicket) return;
+    setSelectedTicketId(nextTicket.id);
+    setActiveTab('queue');
+  }, [filteredTickets, selectedTicketId]);
+
+  useEffect(() => {
+    if (!showTemplates) return;
+    const timeoutId = window.setTimeout(() => {
+      focusTemplateSearch();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [showTemplates, focusTemplateSearch]);
+
+  useEffect(() => {
+    const isTypingTarget = (target: EventTarget | null) => {
+      const element = target as HTMLElement | null;
+      if (!element) return false;
+      const tagName = element.tagName;
+      return (
+        element.isContentEditable ||
+        tagName === 'INPUT' ||
+        tagName === 'TEXTAREA' ||
+        tagName === 'SELECT' ||
+        Boolean(element.closest('input, textarea, select, [contenteditable="true"]'))
+      );
+    };
+
+    const handleShortcut = (event: KeyboardEvent) => {
+      const key = event.key.toLowerCase();
+      const hasModifier = event.metaKey || event.ctrlKey;
+      const isModalOpen = showTransferModal || showBulkActions || showSaveTemplateModal || Boolean(zoomedImage);
+      if (isModalOpen) return;
+
+      if (hasModifier && key === 'enter') {
+        const activeElement = document.activeElement as HTMLElement | null;
+        if (activeElement?.id !== 'agent-reply-input') return;
+        event.preventDefault();
+        sendCurrentReply();
+        return;
+      }
+
+      if (hasModifier && key === 'k') {
+        event.preventDefault();
+        if (activeTab !== 'queue') setActiveTab('queue');
+        setShowTemplates(true);
+        if (showTemplates) focusTemplateSearch();
+        return;
+      }
+
+      if (isTypingTarget(event.target)) return;
+
+      if (key === '/') {
+        event.preventDefault();
+        if (activeTab !== 'queue') setActiveTab('queue');
+        focusTicketSearch();
+        return;
+      }
+
+      if (key === 't') {
+        event.preventDefault();
+        if (activeTab !== 'queue') setActiveTab('queue');
+        setShowTemplates(true);
+        if (showTemplates) focusTemplateSearch();
+        return;
+      }
+
+      if (key === 'j') {
+        event.preventDefault();
+        selectTicketByOffset(1);
+        return;
+      }
+
+      if (key === 'k') {
+        event.preventDefault();
+        selectTicketByOffset(-1);
+      }
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [
+    activeTab,
+    focusTicketSearch,
+    focusTemplateSearch,
+    selectTicketByOffset,
+    sendCurrentReply,
+    showBulkActions,
+    showSaveTemplateModal,
+    showTemplates,
+    showTransferModal,
+    zoomedImage
+  ]);
+
   useEffect(() => {
     if (selectedTicketId && selectedTicket) {
       const lastMsg = selectedTicket.messages[selectedTicket.messages.length - 1];
@@ -391,7 +519,6 @@ export default function AgentDashboard() {
 
   const handlePdfUpload = async (file: File) => {
     setIsPdfUploading(true);
-    setPdfStatus(null);
     try {
       const formData = new FormData();
       formData.append('pdf', file);
@@ -402,12 +529,15 @@ export default function AgentDashboard() {
         const kbRes = await fetch(`${API_URL}/api/kb?company=${encodeURIComponent(selectedKbCompany)}`);
         const kbData = await kbRes.json();
         setKbText(kbData.kb);
-        setPdfStatus({ type: 'success', message: `Successfully processed "${file.name}" — ${data.pages} page(s), ${data.characters.toLocaleString()} characters extracted` });
+        showToast({
+          severity: 'success',
+          message: `Successfully processed "${file.name}" - ${data.pages} page(s), ${data.characters.toLocaleString()} characters extracted`,
+        });
       } else {
-        setPdfStatus({ type: 'error', message: data.error || 'Upload failed' });
+        showToast({ severity: 'error', message: data.error || 'Upload failed' });
       }
     } catch {
-      setPdfStatus({ type: 'error', message: 'Network error — could not reach server' });
+      showToast({ severity: 'error', message: 'Network error - could not reach server' });
     } finally {
       setIsPdfUploading(false);
     }
@@ -454,20 +584,7 @@ export default function AgentDashboard() {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if ((!reply.trim() && !attachment) || !selectedTicketId) return;
-
-    sendAgentReply(selectedTicketId, {
-      id: Date.now().toString(),
-      sender: 'agent',
-      text: reply.trim(),
-      attachment: attachment || undefined,
-      isInternal,
-      createdAt: new Date().toISOString(),
-    });
-    setReply('');
-    setAttachment(null);
-    setIsInternal(false);
-    sendTypingStatus(selectedTicketId, false, 'agent');
+    sendCurrentReply();
   };
 
   const handleResolve = () => {
@@ -550,8 +667,7 @@ export default function AgentDashboard() {
     setTransferTargetId('');
     setTransferNote('');
     setSelectedTicketId(null);
-    setTransferSuccess({ toAgentName: targetAgent?.name ?? 'the agent' });
-    setTimeout(() => setTransferSuccess(null), 5000);
+    showToast({ severity: 'success', message: `Ticket transferred to ${targetAgent?.name ?? 'the agent'}` });
   };
 
   const insertEscalationContext = () => {
@@ -752,24 +868,6 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      {/* Transfer success toast */}
-      {transferSuccess && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[120] animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className="bg-slate-900 text-white rounded-2xl shadow-2xl px-5 py-3.5 flex items-center gap-3 min-w-[260px]">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
-              <CheckCircle2 size={15} className="text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">Ticket transferred</p>
-              <p className="text-xs text-slate-400 mt-0.5">Handed off to <span className="text-slate-200 font-medium">{transferSuccess.toAgentName}</span></p>
-            </div>
-            <button onClick={() => setTransferSuccess(null)} className="text-slate-500 hover:text-slate-300 transition-colors p-0.5">
-              <X size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-
       <div className="h-screen bg-slate-50 flex flex-col font-sans text-slate-900 overflow-hidden">
       <header className="h-16 bg-slate-900 text-white flex items-center px-6 justify-between shrink-0 shadow-sm z-20 relative">
         <div className="flex items-center gap-3">
@@ -876,6 +974,7 @@ export default function AgentDashboard() {
             <div className="space-y-3 mb-3">
               <div className="flex gap-2 flex-wrap items-center">
                 <Input
+                  id="agent-ticket-search"
                   value={ticketSearch}
                   onChange={e => setTicketSearch(e.target.value)}
                   placeholder="Search tickets..."
@@ -1603,17 +1702,6 @@ export default function AgentDashboard() {
               </div>
 
               {}
-              {pdfStatus && (
-                <div className={`text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 font-medium ${
-                  pdfStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-                }`}>
-                  <FileText size={14} />
-                  {pdfStatus.message}
-                  <button onClick={() => setPdfStatus(null)} className="ml-auto"><X size={14} /></button>
-                </div>
-              )}
-
-              {}
               <div className="flex flex-col flex-1 min-h-0">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Knowledge Base Content</p>
@@ -1965,6 +2053,7 @@ export default function AgentDashboard() {
                     </Button>
                     <div className="flex-1 relative group">
                       <Input 
+                        id="agent-reply-input"
                         value={reply}
                         onChange={handleInputChange}
                         placeholder="Type a message..."
@@ -2022,6 +2111,7 @@ export default function AgentDashboard() {
                     <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-96 overflow-hidden flex flex-col">
                       <div className="p-3 border-b border-slate-200 bg-white flex flex-col gap-2">
                         <input
+                          id="agent-template-search"
                           type="text"
                           placeholder="Search templates..."
                           value={templateSearch}
