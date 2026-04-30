@@ -2,6 +2,16 @@
 
 SmartTicket is a production-ready, AI-driven customer support platform designed for modern SaaS companies. It bridges the gap between automated AI self-service and high-touch human support through a seamless, real-time ecosystem.
 
+--- Project Architecture
+
+<img width="6737" height="4045" alt="UDP Communication Timeout-2026-04-30-182811" src="https://github.com/user-attachments/assets/58a49a33-9dcd-49d8-98b0-9ef2242a1ae6" />
+
+
+--- User Workflow Diagram
+
+<img width="3569" height="6323" alt="UDP Communication Timeout-2026-04-30-182941" src="https://github.com/user-attachments/assets/00152fa8-4661-4771-b297-f96c4fe4fab8" />
+
+
 ---
 
 ## Key Features
