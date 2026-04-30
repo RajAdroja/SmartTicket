@@ -1600,22 +1600,26 @@ export default function AgentDashboard() {
                     
                     return (
                       <div key={msg.id} className={`flex w-full animate-in slide-in-from-bottom-2 fade-in duration-300 ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-4 rounded-2xl relative group shadow-sm ${
+                        <div className={`max-w-[80%] p-4 rounded-2xl relative group shadow-sm border ${
                           isAgent 
                             ? (msg.isInternal 
-                                ? 'bg-amber-50 text-amber-900 rounded-tr-sm border border-amber-200/50' 
-                                : 'bg-blue-600 text-white rounded-tr-sm border border-blue-700/50') 
+                                ? 'bg-amber-50 text-amber-900 rounded-tr-sm border-amber-200' 
+                                : 'bg-green-50 text-green-900 rounded-tr-sm border-green-200') 
                             : isBot 
-                              ? 'bg-white text-slate-700 rounded-tl-sm border border-slate-200'
-                              : 'bg-white text-slate-900 border border-slate-200 rounded-tl-sm'
+                              ? 'bg-slate-50 text-slate-700 rounded-tl-sm border-slate-200'
+                              : 'bg-indigo-50 text-indigo-900 border-indigo-200 rounded-tl-sm'
                         }`}>
                           {msg.isInternal && (
                             <div className="absolute -top-3 right-4 flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-200 uppercase tracking-wider shadow-sm">
                               <EyeOff size={10} /> Internal Note
                             </div>
                           )}
-                          <div className={`text-xs mb-1.5 font-bold tracking-wide ${isAgent ? (msg.isInternal ? 'text-amber-600' : 'text-blue-200') : 'text-slate-400'}`}>
-                            {isAgent ? 'You' : isBot ? 'AI Assistant' : selectedTicket.customerName}
+                          <div className={`text-[10px] mb-1.5 font-extrabold uppercase tracking-widest ${
+                            isAgent 
+                              ? (msg.isInternal ? 'text-amber-600' : 'text-green-600') 
+                              : isBot ? 'text-slate-500' : 'text-indigo-600'
+                          }`}>
+                            {isAgent ? (msg.isInternal ? 'You (Internal Note)' : 'You (Agent)') : isBot ? 'AI Assistant' : 'Customer'}
                           </div>
                           {msg.text && <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</div>}
                           {msg.attachment && (
@@ -1627,7 +1631,11 @@ export default function AgentDashboard() {
                             />
                           )}
                           {formatMsgTime(msg.createdAt) && (
-                            <div className={`text-[10px] mt-1.5 ${isAgent ? (msg.isInternal ? 'text-amber-500' : 'text-blue-200') : 'text-slate-400'}`}>
+                            <div className={`text-[10px] mt-1.5 ${
+                              isAgent 
+                                ? (msg.isInternal ? 'text-amber-500' : 'text-green-500') 
+                                : isBot ? 'text-slate-400' : 'text-indigo-400'
+                            }`}>
                               {formatMsgTime(msg.createdAt)}
                             </div>
                           )}
