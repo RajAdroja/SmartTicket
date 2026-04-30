@@ -1601,8 +1601,9 @@ export default function AgentDashboard() {
                     const isBot = msg.sender === 'bot';
                     
                     return (
-                      <div key={msg.id} className={`flex w-full animate-in slide-in-from-bottom-2 fade-in duration-300 ${isAgent ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[80%] p-4 rounded-2xl relative group shadow-sm border ${
+                      <div key={msg.id} className={`flex w-full px-4 mb-2 animate-in slide-in-from-bottom-2 fade-in duration-300 ${isAgent ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex flex-col ${isAgent ? 'items-end' : 'items-start'} max-w-[85%]`}>
+                        <div className={`p-4 rounded-2xl relative group shadow-sm border ${
                           isAgent 
                             ? (msg.isInternal 
                                 ? 'bg-amber-50 text-amber-900 rounded-tr-sm border-amber-200' 
@@ -1616,14 +1617,14 @@ export default function AgentDashboard() {
                               <EyeOff size={10} /> Internal Note
                             </div>
                           )}
-                          <div className={`text-[10px] mb-1.5 font-extrabold uppercase tracking-widest ${
+                          <div className={`text-[10px] mb-1.5 font-extrabold uppercase tracking-widest ${isAgent ? 'text-right' : 'text-left'} ${
                             isAgent 
                               ? (msg.isInternal ? 'text-amber-600' : 'text-green-600') 
                               : isBot ? 'text-slate-500' : 'text-indigo-600'
                           }`}>
                             {isAgent ? (msg.isInternal ? 'You (Internal Note)' : 'You (Agent)') : isBot ? 'AI Assistant' : 'Customer'}
                           </div>
-                          {msg.text && <div className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</div>}
+                          {msg.text && <div className={`text-[15px] leading-relaxed whitespace-pre-wrap ${isAgent ? 'text-right' : 'text-left'}`}>{msg.text}</div>}
                           {msg.attachment && (
                             <img
                               src={msg.attachment}
@@ -1643,6 +1644,7 @@ export default function AgentDashboard() {
                           )}
                         </div>
                       </div>
+                    </div>
                     );
                   })}
                   {selectedTicketId && typingIndicators[selectedTicketId]?.user && normalizeStatus(selectedTicket.status) !== 'resolved' && (
