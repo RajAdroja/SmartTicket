@@ -149,6 +149,13 @@ export default function AgentDashboard() {
   // Incoming transfer toast
   const [incomingTransfer, setIncomingTransfer] = useState<{ ticketId: string; fromAgentName: string; note: string } | null>(null);
 
+  // Bulk actions state
+  const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState<'status' | 'priority' | 'assign' | null>(null);
+  const [bulkActionValue, setBulkActionValue] = useState<string>('');
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+
   // Outgoing transfer success toast
   const [transferSuccess, setTransferSuccess] = useState<{ toAgentName: string } | null>(null);
 
@@ -454,6 +461,52 @@ export default function AgentDashboard() {
     if (selectedTicketId) {
       resolveTicket(selectedTicketId);
       setSelectedTicketId(null);
+    }
+  };
+
+  // Bulk actions handlers
+  const toggleBulkSelect = (ticketId: string) => {
+    const newSet = new Set(bulkSelectedIds);
+    if (newSet.has(ticketId)) {
+      newSet.delete(ticketId);
+    } else {
+      newSet.add(ticketId);
+    }
+    setBulkSelectedIds(newSet);
+  };
+
+  const selectAllFiltered = () => {
+    if (bulkSelectedIds.size === filteredTickets.length) {
+      setBulkSelectedIds(new Set());
+    } else {
+      setBulkSelectedIds(new Set(filteredTickets.map(t => t.id)));
+    }
+  };
+
+  const handleBulkAction = async () => {
+    if (bulkSelectedIds.size === 0 || !bulkActionType || !bulkActionValue) return;
+    
+    setIsBulkProcessing(true);
+    try {
+      const ticketIds = Array.from(bulkSelectedIds);
+      
+      for (const ticketId of ticketIds) {
+        if (bulkActionType === 'status') {
+          updateTicketStatus(ticketId, bulkActionValue as any);
+        } else if (bulkActionType === 'priority') {
+          updateTicketPriority(ticketId, bulkActionValue as any);
+        } else if (bulkActionType === 'assign') {
+          assignTicket(ticketId, bulkActionValue, onlineAgents.find(a => a.agentId === bulkActionValue)?.name || '');
+        }
+      }
+      
+      // Clear selection and close modal
+      setBulkSelectedIds(new Set());
+      setShowBulkActions(false);
+      setBulkActionType(null);
+      setBulkActionValue('');
+    } finally {
+      setIsBulkProcessing(false);
     }
   };
 
@@ -861,6 +914,74 @@ export default function AgentDashboard() {
                 ))}
               </div>
             </div>
+            {/* Bulk Actions Toolbar */}
+            {bulkSelectedIds.size > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2 mb-3 flex-wrap">
+                <input
+                  type="checkbox"
+                  checked={bulkSelectedIds.size === filteredTickets.length && filteredTickets.length > 0}
+                  onChange={selectAllFiltered}
+                  className="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer"
+                />
+                <span className="text-sm font-semibold text-blue-900 whitespace-nowrap">
+                  {bulkSelectedIds.size} selected
+                </span>
+                <select
+                  value={bulkActionType || ''}
+                  onChange={(e) => {
+                    setBulkActionType(e.target.value as any);
+                    setBulkActionValue('');
+                  }}
+                  className="text-xs border border-blue-300 rounded-lg px-2 py-1.5 bg-white text-slate-700 font-medium"
+                >
+                  <option value="">Select action...</option>
+                  <option value="status">Change Status</option>
+                  <option value="priority">Change Priority</option>
+                  <option value="assign">Assign To</option>
+                </select>
+                {bulkActionType && (
+                  <select
+                    value={bulkActionValue}
+                    onChange={(e) => setBulkActionValue(e.target.value)}
+                    className="text-xs border border-blue-300 rounded-lg px-2 py-1.5 bg-white text-slate-700 font-medium"
+                  >
+                    <option value="">Select...</option>
+                    {bulkActionType === 'status' && (
+                      <>
+                        <option value="open">Open</option>
+                        <option value="pending">Pending</option>
+                        <option value="on-hold">On Hold</option>
+                        <option value="resolved">Resolved</option>
+                      </>
+                    )}
+                    {bulkActionType === 'priority' && (
+                      <>
+                        <option value="urgent">Urgent</option>
+                        <option value="high">High</option>
+                        <option value="normal">Normal</option>
+                        <option value="low">Low</option>
+                      </>
+                    )}
+                    {bulkActionType === 'assign' && onlineAgents.map(agent => (
+                      <option key={agent.agentId} value={agent.agentId}>{agent.name}</option>
+                    ))}
+                  </select>
+                )}
+                <Button
+                  onClick={handleBulkAction}
+                  disabled={!bulkActionValue || isBulkProcessing}
+                  className="text-xs font-semibold px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg whitespace-nowrap"
+                >
+                  {isBulkProcessing ? 'Processing...' : 'Apply'}
+                </Button>
+                <button
+                  onClick={() => setBulkSelectedIds(new Set())}
+                  className="text-xs font-semibold px-3 py-1.5 text-blue-700 hover:bg-blue-100 rounded-lg transition-colors whitespace-nowrap"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
             {tickets.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
                 <div className="relative mb-5">
@@ -890,31 +1011,42 @@ export default function AgentDashboard() {
               filteredTickets.map(ticket => {
                 const isResolved = ticket.status === 'resolved';
                 return (
-                  <button
+                  <div
                     key={ticket.id}
-                    onClick={() => {
-                      setSelectedTicketId(ticket.id);
-                      setActiveTab('queue');
-                    }}
-                    className={`w-full p-4 rounded-xl text-left transition-all duration-200 flex flex-col gap-2 border ${
+                    className={`w-full p-4 rounded-xl text-left transition-all duration-200 flex gap-3 border ${
                       selectedTicketId === ticket.id 
                         ? 'bg-blue-50/50 border-blue-200 shadow-sm ring-1 ring-blue-100' 
                         : isResolved 
                           ? 'bg-white/50 opacity-60 hover:opacity-100 hover:bg-white border-transparent hover:border-slate-200' 
                           : 'bg-white hover:border-slate-300 border-slate-200 shadow-sm'
-                    }`}
+                    } ${bulkSelectedIds.has(ticket.id) ? 'ring-2 ring-blue-400' : ''}`}
                   >
-                    <div className="flex justify-between items-start w-full">
-                      <div className="flex flex-col gap-1 items-start">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold text-sm ${isResolved ? 'text-slate-500' : 'text-slate-900'} ${selectedTicketId === ticket.id ? 'text-blue-900' : ''}`}>
-                            {ticket.customerName}
-                          </span>
-                          {/* Unread badge */}
-                          {!isResolved && (unreadCounts[ticket.id] ?? 0) > 0 && (
-                            <span className="flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold shrink-0">
-                              {unreadCounts[ticket.id]}
+                    {/* Checkbox for bulk selection */}
+                    <input
+                      type="checkbox"
+                      checked={bulkSelectedIds.has(ticket.id)}
+                      onChange={() => toggleBulkSelect(ticket.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4 mt-1 rounded border-slate-300 text-blue-600 cursor-pointer shrink-0"
+                    />
+                    <button
+                      onClick={() => {
+                        setSelectedTicketId(ticket.id);
+                        setActiveTab('queue');
+                      }}
+                      className="flex-1 flex flex-col gap-2 text-left"
+                    >
+                      <div className="flex justify-between items-start w-full">
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold text-sm ${isResolved ? 'text-slate-500' : 'text-slate-900'} ${selectedTicketId === ticket.id ? 'text-blue-900' : ''}`}>
+                              {ticket.customerName}
                             </span>
+                            {/* Unread badge */}
+                            {!isResolved && (unreadCounts[ticket.id] ?? 0) > 0 && (
+                              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-blue-600 text-white text-[9px] font-bold shrink-0">
+                                {unreadCounts[ticket.id]}
+                              </span>
                           )}
                         </div>
                         {/* Company source badge */}
@@ -975,7 +1107,8 @@ export default function AgentDashboard() {
                     <div className={`text-xs w-full truncate block mt-1 ${isResolved ? 'text-slate-400' : 'text-slate-500'}`}>
                       {ticket.messages[ticket.messages.length - 1]?.text || "No text content"}
                     </div>
-                  </button>
+                    </button>
+                    </div>
                 );
               })
             )}
