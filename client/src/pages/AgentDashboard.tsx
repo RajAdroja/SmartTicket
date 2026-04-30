@@ -980,38 +980,18 @@ export default function AgentDashboard() {
                   placeholder="Search tickets..."
                   className="flex-1 min-w-[220px] text-sm"
                 />
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2 flex-wrap flex-1">
                   {['all', 'mine', 'unassigned'].map((ownerFilter) => (
                     <button
                       key={ownerFilter}
                       type="button"
                       onClick={() => setTicketOwnerFilter(ownerFilter as 'all' | 'mine' | 'unassigned')}
-                      className={`text-xs font-semibold rounded-xl py-2 px-3 transition-all ${ticketOwnerFilter === ownerFilter ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'}`}
+                      className={`text-xs font-semibold rounded-xl py-2 px-3 transition-all flex-1 ${ticketOwnerFilter === ownerFilter ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'}`}
                     >
-                      {ownerFilter === 'all' ? 'All' : ownerFilter === 'mine' ? 'My tickets' : 'Unassigned'}
+                      {ownerFilter === 'all' ? 'All' : ownerFilter === 'mine' ? 'My' : 'Unassigned'}
                     </button>
                   ))}
                 </div>
-                <select
-                  value={ticketCategoryFilter}
-                  onChange={e => setTicketCategoryFilter(e.target.value)}
-                  className="w-[110px] text-xs border border-slate-200 rounded-md bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Categories</option>
-                  {uniqueCategories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
-                <select
-                  value={ticketEscalationFilter}
-                  onChange={e => setTicketEscalationFilter(e.target.value as 'all' | 'low_confidence' | 'sensitive_account_action' | 'user_requested_human')}
-                  className="w-[130px] text-xs border border-slate-200 rounded-md bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">All Escalations</option>
-                  <option value="low_confidence">Low Confidence</option>
-                  <option value="sensitive_account_action">Sensitive Action</option>
-                  <option value="user_requested_human">User Requested</option>
-                </select>
               </div>
               <div className="grid grid-cols-5 gap-2">
                 {['all', 'open', 'pending', 'on-hold', 'resolved'].map((status) => (
@@ -1019,9 +999,9 @@ export default function AgentDashboard() {
                     key={status}
                     type="button"
                     onClick={() => setTicketStatusFilter(status as 'all' | 'open' | 'pending' | 'on-hold' | 'resolved')}
-                    className={`text-xs font-semibold rounded-xl py-2 transition-all ${ticketStatusFilter === status ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-500 border border-slate-200 hover:border-slate-300 hover:text-slate-700'}`}
+                    className={`text-[10px] font-bold uppercase tracking-tight rounded-lg py-2 transition-all ${ticketStatusFilter === status ? 'bg-slate-800 text-white shadow-sm' : 'bg-white text-slate-400 border border-slate-100 hover:border-slate-200 hover:text-slate-600'}`}
                   >
-                    {status === 'all' ? 'All' : status === 'on-hold' ? 'On Hold' : status.charAt(0).toUpperCase() + status.slice(1)}
+                    {status === 'all' ? 'All' : status === 'on-hold' ? 'Hold' : status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
                 ))}
               </div>
@@ -1183,32 +1163,6 @@ export default function AgentDashboard() {
                               {ticket.priority.charAt(0).toUpperCase() + ticket.priority.slice(1)}
                             </Badge>
                           )}
-                          {ticket.tag && <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-white border-slate-200">{ticket.tag}</Badge>}
-                          {ticket.lastAiConfidenceLabel && (
-                            <Badge variant="outline" className={`text-[9px] py-0 h-4 border ${confidenceBadgeClass(ticket.lastAiConfidenceLabel)}`}>
-                              AI {ticket.lastAiConfidenceLabel}
-                            </Badge>
-                          )}
-                          {ticket.escalationReason && ticket.escalationReason !== 'none' && (
-                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-violet-700 bg-violet-50 border-violet-200">
-                              {escalationReasonLabel(ticket.escalationReason)}
-                            </Badge>
-                          )}
-                          {ticket.autoAssignedAt && (
-                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-blue-700 bg-blue-50 border-blue-200">
-                              Auto-assigned
-                            </Badge>
-                          )}
-                          {ticket.assignedAgentName ? (
-                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-600 bg-slate-50 border-slate-200">
-                              Assigned to {ticket.assignedAgentName}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[9px] py-0 h-4 text-slate-500 bg-slate-100 border-slate-200">
-                              Unassigned
-                            </Badge>
-                          )}
-                          {/* SLA timer — only on active tickets */}
                           {!isResolved && <SlaTimer escalatedAt={ticket.escalatedAt} />}
                         </div>
                       </div>
@@ -1889,24 +1843,7 @@ export default function AgentDashboard() {
                     </div>
                   </div>
                 </div>
-                {selectedTicket.summary && (
-                  <div className="px-8 pb-4 pt-0">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex gap-3 items-start">
-                      <div className="bg-white p-1.5 rounded-lg border border-slate-200 shadow-sm">
-                        <Sparkles className="text-slate-600" size={16} />
-                      </div>
-                      <div className="text-sm text-slate-700 leading-relaxed pt-0.5">
-                        <span className="font-semibold text-slate-900 mr-2">AI Context:</span>
-                        {selectedTicket.summary}
-                        {selectedTicket.escalationReason && selectedTicket.escalationReason !== 'none' && (
-                          <span className="block text-xs mt-1.5 text-violet-700">
-                            Escalation reason: {escalationReasonLabel(selectedTicket.escalationReason)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* AI Context display removed per user request */}
               </div>
 
               {}
@@ -2092,14 +2029,7 @@ export default function AgentDashboard() {
                         <EyeOff size={16} className={isInternal ? "" : "opacity-50"} />
                         Internal Note
                       </button>
-                      <button
-                        type="button"
-                        onClick={insertEscalationContext}
-                        className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-violet-700 hover:bg-violet-50 transition-all"
-                        title="Insert AI confidence and escalation context"
-                      >
-                        + AI Context
-                      </button>
+                      {/* AI Context button removed per user request */}
                     </div>
                     <Button type="submit" disabled={!reply.trim() && !attachment} className={`h-12 px-6 rounded-xl font-bold transition-all shadow-sm ${isInternal ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}>
                       <Send size={18} className="mr-2" /> {isInternal ? 'Save' : 'Send'}
