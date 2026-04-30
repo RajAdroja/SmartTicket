@@ -1505,13 +1505,15 @@ export default function AgentDashboard() {
                     {normalizeStatus(selectedTicket.status) !== 'resolved' && (
                       <>
                         <Button
-                          variant="outline"
                           onClick={() => { setShowTransferModal(true); setTransferTargetId(''); setTransferNote(''); }}
-                          className="gap-2 text-blue-700 border-blue-300 hover:bg-blue-50 hover:border-blue-400 transition-colors font-semibold rounded-lg shadow-sm"
+                          className="gap-2 bg-blue-600 hover:bg-blue-700 text-white border-blue-600 transition-colors font-bold rounded-lg shadow-sm"
                         >
                           <ArrowRightLeft size={16} /> Transfer
                         </Button>
-                        <Button variant="outline" onClick={handleResolve} className="gap-2 text-emerald-700 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400 transition-colors font-semibold rounded-lg shadow-sm">
+                        <Button 
+                          onClick={handleResolve} 
+                          className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600 transition-colors font-bold rounded-lg shadow-sm"
+                        >
                           <CheckCircle2 size={16} /> Mark as Resolved
                         </Button>
                         {(['open', 'pending', 'on-hold'] as const).map(statusOption => {
