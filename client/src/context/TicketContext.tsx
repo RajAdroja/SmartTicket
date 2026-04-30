@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { API_URL } from '../config';
 
 export interface Message {
   id: string;
@@ -102,7 +103,7 @@ interface TicketContextType {
 
 const TicketContext = createContext<TicketContextType | undefined>(undefined);
 
-const SOCKET_URL = 'http://localhost:5001';
+const SOCKET_URL = API_URL;
 
 // Generate a unique agent ID per socket connection (unique per tab/session)
 // We use a module-level variable so it's stable for the lifetime of this page load
