@@ -6,7 +6,10 @@
   
   const company = scriptTag.getAttribute('data-company') || 'global';
   const token = scriptTag.getAttribute('data-token') || '';
-  const serverUrl = scriptTag.src.split('/widget.js')[0];
+  // Automatically detect the server URL based on where THIS script is being loaded from
+  const serverUrl = scriptTag.src.includes('/widget.js') 
+    ? scriptTag.src.split('/widget.js')[0] 
+    : 'http://localhost:5173';
 
   const iframe = document.createElement('iframe');
   iframe.src = `${serverUrl}/widget?company=${encodeURIComponent(company)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;

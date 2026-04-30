@@ -13,7 +13,7 @@ import Typography from '@mui/material/Typography';
 import { useTickets, Message, type EscalationExplainability } from '../../context/TicketContext';
 import type { ChatApiResponseContract } from '../../lib/ai-contract';
 
-const API_URL = 'http://localhost:5001';
+import { API_URL } from '../../config';
 const SESSION_ID_KEY = 'smartTicket_sessionId';
 
 function formatMsgTime(createdAt?: string): string {

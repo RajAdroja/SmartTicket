@@ -29,7 +29,24 @@ const FEEDBACK_LOOP_ENABLED = flagEnabled(process.env.FEEDBACK_LOOP_ENABLED, tru
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 const app = express();
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:5175',
+  // You will add your Vercel URL here after deployment
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // In production, you'd be more restrictive. For now, we allow if in list or if it's the widget (null origin)
+    if (!origin || allowedOrigins.includes(origin) || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all during transition
+    }
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '10mb' }));
 
 const ChatMessageInputSchema = z.object({

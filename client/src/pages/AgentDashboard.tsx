@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 
-const API_URL = 'http://localhost:5001';
+import { API_URL } from '../config';
 
 function formatMsgTime(createdAt?: string): string {
   if (!createdAt) return '';
