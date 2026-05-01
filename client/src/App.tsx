@@ -19,7 +19,7 @@ function Dashboard() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 font-medium">Welcome back to the new SmartTicket.</p>
+          <p className="text-slate-500 font-medium font-['Inter']">Managing support across all companies.</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" size="sm">Export Report</Button>
@@ -30,7 +30,12 @@ function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
-            <Input label="Search Knowledge Base" placeholder="Search for answers..." icon={<Search size={16} />} />
+            {/* CHANGED: Now a Universal Ticket Search */}
+            <Input 
+              label="Find Ticket or Customer" 
+              placeholder="Search by ID, Name, or Company..." 
+              icon={<Search size={16} />} 
+            />
           </div>
           
           <div className="space-y-4">
@@ -43,7 +48,7 @@ function Dashboard() {
         </div>
 
         <div className="space-y-8">
-          <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
+          <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
             <h2 className="font-bold text-slate-900 mb-6 text-lg">Live Insights</h2>
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
