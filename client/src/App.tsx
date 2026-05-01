@@ -3,6 +3,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { Button, Input, Badge } from '@/components/ui'
 import { Search } from 'lucide-react'
 import { TicketProvider, useTickets } from '@/context/TicketContext'
+import { TicketList } from '@/components/tickets/TicketList'
 
 function Dashboard() {
   const { metrics, tickets } = useTickets();
@@ -27,14 +28,12 @@ function Dashboard() {
             <Input label="Search Knowledge Base" placeholder="Search for answers..." icon={<Search size={16} />} />
           </div>
           
-          <div className="bg-white p-12 rounded-[2rem] border border-slate-200 shadow-sm h-80 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
-              <Search size={32} />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-lg font-bold text-slate-900">Active Queue</h2>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{tickets.length} Total</span>
             </div>
-            <div>
-              <p className="text-lg font-bold text-slate-900">No active tickets selected</p>
-              <p className="text-slate-400 max-w-xs mx-auto">Select a ticket from the sidebar or search to start helping customers.</p>
-            </div>
+            <TicketList />
           </div>
         </div>
 
