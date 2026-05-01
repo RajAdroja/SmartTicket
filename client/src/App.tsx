@@ -1,8 +1,7 @@
-import React from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
-import { Button, Input, Badge } from '@/components/ui'
-import { Search } from 'lucide-react'
-
+import React from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Button, Input, Badge } from '@/components/ui';
+import { Search } from 'lucide-react';
 export default function App() {
   return (
     <DashboardLayout>
@@ -17,13 +16,11 @@ export default function App() {
             <Button size="sm">Create Ticket</Button>
           </div>
         </header>
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm">
               <Input label="Search Knowledge Base" placeholder="Search for answers..." icon={<Search size={16} />} />
             </div>
-            
             <div className="bg-white p-12 rounded-[2rem] border border-slate-200 shadow-sm h-80 flex flex-col items-center justify-center text-center space-y-4">
               <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
                 <Search size={32} />
@@ -34,7 +31,6 @@ export default function App() {
               </div>
             </div>
           </div>
-
           <div className="space-y-8">
             <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm">
               <h2 className="font-bold text-slate-900 mb-6 text-lg">Live Insights</h2>
@@ -57,5 +53,5 @@ export default function App() {
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }
