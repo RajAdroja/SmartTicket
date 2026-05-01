@@ -201,8 +201,19 @@ export const updateTicketPriority = async (ticketId: string, priority: Ticket['p
 };
 
 export const getMetrics = async () => {
-  const m = await MetricsModel.findById('global').lean();
-  return m || { aiResolved: 0, escalated: 0, humanResolved: 0, totalCsatScore: 0, csatCount: 0 };
+  const [m, activeCount, avgRes] = await Promise.all([
+    MetricsModel.findById('global').lean(),
+    TicketModel.countDocuments({ status: { $ne: 'resolved' } }),
+    calculateAverageResolutionTime()
+  ]);
+
+  const baseMetrics = m || { aiResolved: 0, escalated: 0, humanResolved: 0, totalCsatScore: 0, csatCount: 0 };
+  
+  return {
+    ...baseMetrics,
+    activeTickets: activeCount,
+    avgResolutionTimeMs: avgRes
+  };
 };
 
 export const incrementAiResolved = async () => {
